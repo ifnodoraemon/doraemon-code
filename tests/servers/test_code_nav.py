@@ -1,8 +1,6 @@
 """Tests for servers._services.code_nav — find_definition."""
 
-import os
 
-import pytest
 
 from src.servers._services.code_nav import _check_javascript, _check_python, find_definition
 

@@ -1,8 +1,6 @@
 """Targeted coverage tests for servers.run - shell blocked, background, install validation."""
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from src.servers.run import (
     _run_background,

@@ -1,14 +1,12 @@
 """Targeted coverage tests for core.llm.model_client_direct."""
 
-import asyncio
+import importlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.core.llm.model_client_direct import (
     DirectModelClient,
-    _is_google_openai_compatible_base,
-    _is_retryable,
     _retry_async,
 )
 from src.core.llm.model_utils import ChatResponse, ClientConfig, Provider, StreamChunk
@@ -60,7 +58,11 @@ class TestChatAnthropicPath:
 class TestCircuitBreakerOpenError:
     @pytest.mark.asyncio
     async def test_circuit_breaker_open_raises_runtime(self):
-        from src.core.errors import CircuitBreakerOpenError, CircuitBreaker, CircuitBreakerConfig, CircuitState
+        from src.core.errors import (
+            CircuitBreaker,
+            CircuitBreakerConfig,
+            CircuitState,
+        )
 
         config = ClientConfig(model="gpt-4o", openai_api_key="o")
         client = DirectModelClient(config)
@@ -170,7 +172,6 @@ class TestRetryAsyncEdge:
             if False:
                 yield
 
-        MAX = 0
         with patch("src.core.llm.model_client_direct.MAX_RETRIES", 0):
             with pytest.raises(RuntimeError, match="no attempts"):
                 await _retry_async(lambda: None)
@@ -194,7 +195,7 @@ class TestConnectImportErrors:
         client = DirectModelClient(config)
         with patch.dict("sys.modules", {"google": None, "google.genai": None}):
             with pytest.raises(ImportError):
-                import google.genai
+                importlib.import_module("google.genai")
             with pytest.raises(RuntimeError, match="No providers"):
                 await client.connect()
 

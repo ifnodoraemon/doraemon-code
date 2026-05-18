@@ -799,6 +799,22 @@ class TestPluginStateManagement:
         result = plugin_manager.install("owner/repo@abc123", scope=PluginScope.PROJECT)
         assert result is None
 
+    def test_install_invalid_github_source_rejected(self, plugin_manager, monkeypatch):
+        def fail_run(*args, **kwargs):
+            pytest.fail("invalid plugin source should not invoke git")
+
+        monkeypatch.setattr("src.core.plugins.subprocess.run", fail_run)
+        result = plugin_manager.install("owner/repo/extra", scope=PluginScope.PROJECT)
+        assert result is None
+
+    def test_install_invalid_github_sha_rejected(self, plugin_manager, monkeypatch):
+        def fail_run(*args, **kwargs):
+            pytest.fail("invalid plugin SHA should not invoke git")
+
+        monkeypatch.setattr("src.core.plugins.subprocess.run", fail_run)
+        result = plugin_manager.install("owner/repo@main", scope=PluginScope.PROJECT)
+        assert result is None
+
     def test_command_handler_execution(self, plugin_manager, sample_plugin_dir):
         plugin_manager._load_plugin(sample_plugin_dir, PluginScope.PROJECT)
         commands = plugin_manager.get_commands()

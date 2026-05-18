@@ -36,12 +36,20 @@
 
 ## Modes
 
-产品 mode 只有两个：
+产品 mode：
 
 - `plan`
+- `review`
 - `build`
 
 Mode 只决定默认 built-in capability groups，不决定 provider 或 MCP 行为。
+
+`review` 是只读审查模式，可通过 CLI `/review [--base REF] [paths...]` 临时进入；它不暴露 `write`、`run` 或 `memory_put`。
+
+CLI 还提供两个只读可观测性命令：
+
+- `/tools [all]`：显示当前 registry 的工具策略、审批和 sandbox 分类。
+- `/audit [limit]`：显示最近工具策略检查和执行审计。
 
 ## Built-in Tools
 

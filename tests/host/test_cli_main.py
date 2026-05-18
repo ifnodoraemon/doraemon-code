@@ -6,6 +6,7 @@ from src.core.commands import CommandArgument, CommandDefinition
 from src.core.session import SessionManager
 from src.host.cli.main import (
     _argv_with_default_start,
+    _build_review_prompt,
     _find_orchestration_run,
     _format_task_tree,
     _handle_bang_command,
@@ -14,7 +15,10 @@ from src.host.cli.main import (
     _parse_custom_command_args,
     _parse_orchestrate_args,
     _parse_resume_args,
+    _parse_review_args,
     _print_session_list,
+    _print_tool_audit,
+    _print_tool_policies,
     _resolve_resume_session_id,
     _resolve_task_root,
     handle_command,
@@ -69,6 +73,101 @@ def test_parse_orchestrate_args_rejects_invalid_workers():
 def test_parse_orchestrate_args_default_workers():
     parsed = _parse_orchestrate_args(["do", "something"])
     assert parsed == (2, "do something")
+
+
+def test_parse_review_args_defaults_to_head_and_working_tree():
+    assert _parse_review_args([]) == ("HEAD", "working tree changes")
+
+
+def test_parse_review_args_supports_base_and_scope():
+    assert _parse_review_args(["--base", "main", "src", "tests"]) == ("main", "src tests")
+    assert _parse_review_args(["--base=origin/main", "src/app.py"]) == (
+        "origin/main",
+        "src/app.py",
+    )
+
+
+def test_parse_review_args_rejects_unknown_flags():
+    assert _parse_review_args(["--unknown"]) is None
+    assert _parse_review_args(["--base"]) is None
+
+
+def test_build_review_prompt_contains_scope_and_read_only_instruction():
+    prompt = _build_review_prompt("main", "src tests")
+    assert "Base reference: main" in prompt
+    assert "Scope: src tests" in prompt
+    assert "do not edit files" in prompt
+
+
+def test_print_tool_policies_shows_sandbox_and_approval(monkeypatch):
+    printed: list[str] = []
+    registry = SimpleNamespace(
+        get_tool_policies=lambda mode=None: {
+            "read": {
+                "visible": True,
+                "requires_approval": False,
+                "sandbox": "workspace_read",
+                "source": "builtin",
+            },
+            "write": {
+                "visible": False,
+                "requires_approval": True,
+                "sandbox": "workspace_write",
+                "source": "builtin",
+            },
+        }
+    )
+    session = SimpleNamespace(mode="review", registry=registry)
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    _print_tool_policies(session, [])
+
+    assert any("Tools for mode review" in message for message in printed)
+    assert any("read" in message and "workspace_read" in message for message in printed)
+    assert not any("write" in message for message in printed)
+
+
+def test_print_tool_policies_all_includes_hidden(monkeypatch):
+    printed: list[str] = []
+    registry = SimpleNamespace(
+        get_tool_policies=lambda mode=None: {
+            "write": {
+                "visible": False,
+                "requires_approval": True,
+                "sandbox": "workspace_write",
+                "source": "builtin",
+            }
+        }
+    )
+    session = SimpleNamespace(mode="review", registry=registry)
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    _print_tool_policies(session, ["all"])
+
+    assert any("write" in message and "hidden" in message for message in printed)
+
+
+def test_print_tool_audit_shows_recent_entries(monkeypatch):
+    printed: list[str] = []
+    registry = SimpleNamespace(
+        get_audit_log=lambda limit: [
+            {
+                "allowed": False,
+                "mode": "review",
+                "tool_name": "write",
+                "action": "policy_check",
+                "sandbox": "workspace_write",
+                "error": "blocked",
+            }
+        ]
+    )
+    session = SimpleNamespace(registry=registry)
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    _print_tool_audit(session, ["5"])
+
+    assert any("Recent tool audit" in message for message in printed)
+    assert any("deny" in message and "write" in message and "blocked" in message for message in printed)
 
 
 def test_parse_resume_args_supports_worker_flag():
@@ -221,11 +320,13 @@ async def test_handle_command_mode_uses_session_state(monkeypatch):
     monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
 
     await handle_command("/mode plan", session)
+    await handle_command("/mode review", session)
     await handle_command("/mode", session)
 
-    assert session.mode == "plan"
+    assert session.mode == "review"
     assert any("Switched to plan mode" in message for message in printed)
-    assert any("Current mode: plan" in message for message in printed)
+    assert any("Switched to review mode" in message for message in printed)
+    assert any("Current mode: review" in message for message in printed)
 
 
 @pytest.mark.asyncio
@@ -629,6 +730,44 @@ async def test_handle_command_runs_prompt_only_custom_command(tmp_path, monkeypa
 
 
 @pytest.mark.asyncio
+async def test_handle_command_runs_builtin_review(tmp_path, monkeypatch):
+    printed: list[object] = []
+    captured: dict[str, str] = {}
+    modes: list[str] = []
+
+    async def set_mode(mode: str):
+        modes.append(mode)
+        session.mode = mode
+
+    async def turn(prompt: str):
+        captured["prompt"] = prompt
+        return SimpleNamespace(success=True, response="findings", error=None)
+
+    session = SimpleNamespace(project_dir=tmp_path, mode="build", set_mode=set_mode, turn=turn)
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    result = await handle_command("/review --base main src/app.py tests", session)
+
+    assert result is None
+    assert modes == ["review", "build"]
+    assert "Base reference: main" in captured["prompt"]
+    assert "Scope: src/app.py tests" in captured["prompt"]
+    assert any(message.__class__.__name__ == "Panel" for message in printed)
+
+
+@pytest.mark.asyncio
+async def test_handle_command_builtin_review_usage(tmp_path, monkeypatch):
+    printed: list[str] = []
+    session = SimpleNamespace(project_dir=tmp_path, mode="build")
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    result = await handle_command("/review --base", session)
+
+    assert result is None
+    assert printed == ["Usage: /review [--base REF] [paths...]"]
+
+
+@pytest.mark.asyncio
 async def test_handle_command_custom_command_help(tmp_path, monkeypatch):
     printed: list[str] = []
     cmd_dir = tmp_path / ".agent" / "commands"
@@ -644,6 +783,51 @@ async def test_handle_command_custom_command_help(tmp_path, monkeypatch):
 
     assert result is None
     assert any("Say hello" in message for message in printed)
+
+
+@pytest.mark.asyncio
+async def test_handle_command_tools(tmp_path, monkeypatch):
+    printed: list[str] = []
+    registry = SimpleNamespace(
+        get_tool_policies=lambda mode=None: {
+            "read": {
+                "visible": True,
+                "requires_approval": False,
+                "sandbox": "workspace_read",
+                "source": "builtin",
+            }
+        }
+    )
+    session = SimpleNamespace(project_dir=tmp_path, mode="review", registry=registry)
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    result = await handle_command("/tools", session)
+
+    assert result is None
+    assert any("read" in message for message in printed)
+
+
+@pytest.mark.asyncio
+async def test_handle_command_audit(tmp_path, monkeypatch):
+    printed: list[str] = []
+    registry = SimpleNamespace(
+        get_audit_log=lambda limit: [
+            {
+                "allowed": True,
+                "mode": "build",
+                "tool_name": "read",
+                "action": "executed",
+                "sandbox": "workspace_read",
+            }
+        ]
+    )
+    session = SimpleNamespace(project_dir=tmp_path, registry=registry)
+    monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
+
+    result = await handle_command("/audit 1", session)
+
+    assert result is None
+    assert any("read" in message and "executed" in message for message in printed)
 
 
 @pytest.mark.asyncio

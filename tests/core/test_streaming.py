@@ -1,17 +1,16 @@
 """Tests for src.core.streaming."""
 
 import asyncio
-import time
 
 import pytest
 
 from src.core.streaming import (
     StreamBuffer,
     StreamChunk,
+    StreamingChat,
     StreamManager,
     StreamState,
     StreamStats,
-    StreamingChat,
     create_streaming_printer,
     stream_to_string,
 )

@@ -1,7 +1,6 @@
 """Tests for src/gateway/client.py"""
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -112,14 +111,14 @@ class TestGatewayClient:
         client = GatewayClient(config=GatewayConfig(base_url="http://localhost:9999"))
         await client.connect()
 
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(return_value={"choices": []})
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value={"choices": []})
         mock_response.raise_for_status = MagicMock()
 
         mock_post = AsyncMock(return_value=mock_response)
         client._client.post = mock_post
 
-        result = await client.chat(
+        await client.chat(
             "gpt-4", [{"role": "user", "content": "hi"}], temperature=0.5, max_tokens=100
         )
         mock_post.assert_called_once()
@@ -135,8 +134,8 @@ class TestGatewayClient:
         client = GatewayClient(config=GatewayConfig(base_url="http://localhost:9999"))
         await client.connect()
 
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(return_value={"choices": []})
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value={"choices": []})
         mock_response.raise_for_status = MagicMock()
         client._client.post = AsyncMock(return_value=mock_response)
 

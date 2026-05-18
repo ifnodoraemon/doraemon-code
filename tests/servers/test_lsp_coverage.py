@@ -1,13 +1,11 @@
 """Targeted coverage tests for servers.lsp - references, rename, definition, hover completions."""
 
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.servers.lsp import (
     CompletionItem,
-    PylspClient,
     lsp_completions,
     lsp_definition,
     lsp_hover,
@@ -98,8 +96,8 @@ class TestGetLspClient:
         with patch("src.servers.lsp.PylspClient") as MockClient:
             instance = MockClient.return_value
             instance.start = AsyncMock(return_value=False)
-            from src.servers.lsp import _get_lsp_client
             import src.servers.lsp as lsp_mod
+            from src.servers.lsp import _get_lsp_client
             lsp_mod._lsp_client = None
             result = await _get_lsp_client()
             assert result is None

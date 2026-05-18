@@ -1,19 +1,14 @@
 """Targeted coverage for agent/react.py uncovered lines: 135,141-142,144,186,274,307-308,323-325,353-355,385-388,401-402,426-429,473-474,601,604,763."""
 
 import asyncio
-import json
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.agent.react import ReActAgent, TraceInterface
-from src.agent.state import AgentState
 from src.agent.types import (
     Action,
     ActionType,
-    AgentResult,
-    Message,
     Observation,
     Thought,
     ToolCall,

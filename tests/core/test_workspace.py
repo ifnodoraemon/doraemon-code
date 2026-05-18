@@ -200,7 +200,7 @@ class TestWorkspaceManager:
         formatted = mgr.format_path(external)
         assert str(external) == formatted
 
-    def test_resolve_path_absolute_nonexistent(self, tmp_path):
+    def test_resolve_path_absolute_nonexistent_outside_workspace(self, tmp_path):
         mgr = WorkspaceManager(primary_dir=tmp_path)
         assert mgr.resolve_path("/absolutely/nonexistent") is None
 

@@ -1,12 +1,11 @@
 """Targeted coverage for agent/doraemon.py uncovered lines: 134,138-140,149,210,231,249,345-347,391,407-418,520-528,566,575,726."""
 
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agent.doraemon import DoraemonAgent, create_doraemon_agent, create_doraemon_agent_with_tools
+from src.agent.doraemon import create_doraemon_agent, create_doraemon_agent_with_tools
 
 
 def _make_agent(**kw):
@@ -60,7 +59,7 @@ class TestDoraemonAgentRunWithTaskManager:
             mock_run.return_value = SimpleNamespace(success=True, error=None, response="ok", tool_calls=[], tokens_used=0)
             with patch("src.servers.task.set_task_manager", return_value="token") as mock_set:
                 with patch("src.servers.task.reset_task_manager") as mock_reset:
-                    result = await agent.run("test")
+                    await agent.run("test")
                     mock_set.assert_called_once()
                     mock_reset.assert_called_once_with("token")
 
@@ -71,9 +70,9 @@ class TestDoraemonAgentThinkWithDisplay:
         agent = _make_agent()
         agent.display_callback = AsyncMock()
         with patch("src.agent.react.ReActAgent.think", new_callable=AsyncMock) as mock_think:
-            from src.agent.types import Thought, Observation
+            from src.agent.types import Observation, Thought
             mock_think.return_value = Thought(reasoning="my reasoning", response="done")
-            result = await agent.think(Observation(user_input="test"))
+            await agent.think(Observation(user_input="test"))
         assert agent.display_callback.call_count >= 1
 
 
@@ -86,7 +85,7 @@ class TestDoraemonAgentActWithDisplay:
             from src.agent.types import Action, ActionType
             mock_act.return_value = Action(type=ActionType.RESPOND, response="ok")
             mock_act.return_value.to_dict = lambda: {"type": "respond", "response": "ok"}
-            result = await agent.act(MagicMock())
+            await agent.act(MagicMock())
         agent.display_callback.assert_any_await("action", {"action": {"type": "respond", "response": "ok"}})
 
 

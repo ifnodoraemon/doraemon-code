@@ -1,19 +1,15 @@
 """Additional coverage tests for host.cli.main - handle_command commands, interactive loop helpers."""
 
-import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.host.cli.main import (
     _parse_orchestrate_args,
     _parse_resume_args,
-    _format_task_tree,
-    _find_orchestration_run,
     _resolve_task_root,
     handle_command,
-    run_chat_loop,
 )
 
 

@@ -41,7 +41,7 @@ class TaskPlanner:
     def _generate_id(self, prefix: str = "task") -> str:
         """Generate a unique task ID."""
         self._id_counter += 1
-        hash_part = hashlib.md5(
+        hash_part = hashlib.sha256(
             f"{datetime.now().isoformat()}{self._id_counter}".encode()
         ).hexdigest()[:6]
         return f"{prefix}_{hash_part}"

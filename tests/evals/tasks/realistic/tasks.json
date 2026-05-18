@@ -109,29 +109,6 @@
     "reference_solution": "Add retry loop with time.sleep(2**attempt), catch HTTPError and Timeout, re-raise after max retries"
   },
   {
-    "id": "feature-002",
-    "category": "feature_addition",
-    "difficulty": 7,
-    "name": "Add Pagination to List Endpoint",
-    "prompt": "The `/api/items` endpoint in `src/webui/routes/items.py` returns all items at once. Add cursor-based pagination with `limit` (default 20, max 100) and `cursor` parameters. Return a response with `items`, `next_cursor`, and `has_more` fields.",
-    "expected_steps": 5,
-    "timeout": 360,
-    "assertions": [
-      {"type": "file_contains", "path": "src/webui/routes/items.py", "pattern": "cursor"},
-      {"type": "file_contains", "path": "src/webui/routes/items.py", "pattern": "limit"},
-      {"type": "file_contains", "path": "src/webui/routes/items.py", "pattern": "has_more"},
-      {"type": "file_contains", "path": "src/webui/routes/items.py", "pattern": "next_cursor"},
-      {"type": "api_response_schema", "endpoint": "/api/items", "required_fields": ["items", "next_cursor", "has_more"]},
-      {"type": "tests_pass", "suite": "tests/test_items_api.py"}
-    ],
-    "rubric": {
-      "api_design": "Cursor-based pagination should be properly implemented",
-      "validation": "Limit should be validated (1-100 range)",
-      "consistency": "Pagination should work correctly across multiple requests"
-    },
-    "reference_solution": "Use base64-encoded item ID as cursor, query with WHERE id > cursor LIMIT limit+1, check if extra item exists for has_more"
-  },
-  {
     "id": "optimize-001",
     "category": "performance_optimization",
     "difficulty": 6,
@@ -196,29 +173,5 @@
       "organization": "Tests should be well-organized and named"
     },
     "reference_solution": "Use pytest fixtures for common setup, parametrize for multiple inputs, test both success and failure cases"
-  },
-  {
-    "id": "test-002",
-    "category": "test_writing",
-    "difficulty": 6,
-    "name": "Add Integration Tests for API",
-    "prompt": "Write integration tests for the `/api/auth` endpoints in `src/webui/routes/auth.py`. Test the full flow: register, login, token refresh, and logout. Use pytest fixtures for test client and database setup. Tests should be in `tests/integration/test_auth_api.py`.",
-    "expected_steps": 4,
-    "timeout": 360,
-    "assertions": [
-      {"type": "file_exists", "path": "tests/integration/test_auth_api.py"},
-      {"type": "file_contains", "path": "tests/integration/test_auth_api.py", "pattern": "TestClient|client"},
-      {"type": "file_contains", "path": "tests/integration/test_auth_api.py", "pattern": "fixture"},
-      {"type": "file_contains", "path": "tests/integration/test_auth_api.py", "pattern": "/api/auth"},
-      {"type": "test_count", "path": "tests/integration/test_auth_api.py", "min_tests": 8},
-      {"type": "tests_pass", "suite": "tests/integration/test_auth_api.py"}
-    ],
-    "rubric": {
-      "flow_coverage": "Full authentication flow should be tested",
-      "isolation": "Tests should be independent and idempotent",
-      "fixtures": "Proper use of pytest fixtures for setup/teardown",
-      "assertions": "Response status codes and body should be verified"
-    },
-    "reference_solution": "Use FastAPI TestClient, create fixtures for test user and auth tokens, test happy path and error cases"
   }
 ]

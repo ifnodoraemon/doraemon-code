@@ -1,6 +1,5 @@
 """Tests for gateway.schema — unified data model and serialization."""
 
-import pytest
 
 from src.gateway.schema import (
     ChatMessage,
@@ -17,7 +16,6 @@ from src.gateway.schema import (
     ToolResult,
     Usage,
 )
-
 
 # ── Role ──────────────────────────────────────────────────────────────
 

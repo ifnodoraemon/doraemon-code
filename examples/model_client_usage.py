@@ -6,15 +6,17 @@ Demonstrates both Gateway and Direct modes for the unified model client.
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-from src.core.model_client import (
-    ModelClient,
-    ClientConfig,
-    ClientMode,
-    Message,
-    ToolDefinition,
-)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core.llm.model_client import ModelClient  # noqa: E402
+from src.core.llm.model_utils import ClientMode, Message, ToolDefinition  # noqa: E402
 
 load_dotenv()
 

@@ -1,13 +1,9 @@
-import os
-from pathlib import Path
 
 import pytest
 
 from src.core.security.security import (
     is_sensitive_path,
     validate_path,
-    SENSITIVE_PATHS,
-    SENSITIVE_PATTERNS,
 )
 
 

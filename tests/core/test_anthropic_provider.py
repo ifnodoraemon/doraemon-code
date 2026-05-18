@@ -1,9 +1,6 @@
 """Tests for src.core.llm.providers.anthropic — AnthropicAdapter."""
 
-import json
-from unittest.mock import MagicMock
 
-import pytest
 
 from src.core.llm.providers.anthropic import (
     AnthropicAdapter,

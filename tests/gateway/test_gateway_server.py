@@ -815,8 +815,9 @@ class TestMiddleware:
 
 class TestHealthEndpoint:
     def test_health_no_router(self):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/health")
@@ -826,8 +827,9 @@ class TestHealthEndpoint:
 
 class TestLimitRequestBodyOversize:
     def test_oversize_body_rejected(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         monkeypatch.setattr("src.gateway.server.MAX_REQUEST_BODY_BYTES", 10)
         client = TestClient(app, raise_server_exceptions=False)
@@ -841,8 +843,9 @@ class TestLimitRequestBodyOversize:
 
 class TestListModelsEndpoint:
     def test_unauthenticated(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", "secret")
         client = TestClient(app, raise_server_exceptions=False)
@@ -852,8 +855,9 @@ class TestListModelsEndpoint:
 
 class TestGetModelEndpoint:
     def test_unauthenticated(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", "secret")
         client = TestClient(app, raise_server_exceptions=False)
@@ -863,8 +867,9 @@ class TestGetModelEndpoint:
 
 class TestChatCompletionsEndpoint:
     def test_unauthenticated(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", "secret")
         client = TestClient(app, raise_server_exceptions=False)
@@ -877,8 +882,9 @@ class TestChatCompletionsEndpoint:
 
 class TestAnthropicMessagesEndpoint:
     def test_unauthenticated(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", "secret")
         client = TestClient(app, raise_server_exceptions=False)
@@ -891,8 +897,9 @@ class TestAnthropicMessagesEndpoint:
 
 class TestListProvidersEndpoint:
     def test_unauthenticated(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", "secret")
         client = TestClient(app, raise_server_exceptions=False)
@@ -903,7 +910,7 @@ class TestListProvidersEndpoint:
 class TestStreamResponseFunction:
     @pytest.mark.asyncio
     async def test_stream_error_handling(self):
-        from src.gateway.server import stream_response, ChatRequest
+        from src.gateway.server import ChatRequest, stream_response
 
         class ErrorRouter:
             async def chat_stream(self, request, **kw):
@@ -919,7 +926,7 @@ class TestStreamResponseFunction:
 
     @pytest.mark.asyncio
     async def test_stream_exception_handling(self):
-        from src.gateway.server import stream_response, ChatRequest
+        from src.gateway.server import ChatRequest, stream_response
 
         class BrokenRouter:
             async def chat_stream(self, request, **kw):
@@ -936,8 +943,8 @@ class TestStreamResponseFunction:
 class TestStreamAnthropicResponseFunction:
     @pytest.mark.asyncio
     async def test_error_chunk(self):
-        from src.gateway.server import stream_anthropic_response, ChatRequest
         from src.gateway.schema import ErrorResponse
+        from src.gateway.server import ChatRequest, stream_anthropic_response
 
         class ErrorRouter:
             async def chat_stream(self, request, **kw):

@@ -8,10 +8,6 @@ import pytest
 
 from src.agent.adapter import (
     AgentSession,
-    AgentTurnResult,
-    _collect_modified_paths,
-    _message_from_session_data,
-    _message_to_session_data,
 )
 from src.agent.types import Message
 
@@ -141,7 +137,6 @@ class TestAgentSessionRollbackOrchestration:
         session._state.add_assistant_message("response")
         session._state.add_user_message("orchestration input")
         session._state.add_assistant_message("orchestration response")
-        initial_count = len(session._state.messages)
         session._rollback_orchestration_messages(2)
         assert len(session._state.messages) == 2
 

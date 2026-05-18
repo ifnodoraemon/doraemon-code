@@ -53,7 +53,6 @@ def _read_path_content(path: str, offset: int = 0, limit: int | None = None, enc
         return "Error: File not found."
 
     ext = os.path.splitext(path)[1].lower()
-    file_size = os.path.getsize(valid_path)
 
     try:
         if ext == ".pdf":
@@ -308,7 +307,8 @@ def grep_search(
 
                                 if max_results is not None and len(results) >= max_results:
                                     return "\n".join(results)
-                except Exception:
+                except Exception as exc:
+                    logger.debug("Skipping unreadable file during grep search %s: %s", full_path, exc)
                     continue
 
         if not results:

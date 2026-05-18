@@ -1,8 +1,9 @@
 # Doraemon Code
 
-本项目是一个本地运行的 coding agent，主入口是 CLI，运行模式只有两种：
+本项目是一个本地运行的 coding agent，主入口是 CLI，运行模式包括：
 
 - `plan`
+- `review`
 - `build`
 
 当前主链已经支持：
@@ -22,7 +23,8 @@
                               |
                               v
                     +------------------+
-                    |  Mode: plan/build|
+                    | Mode: plan/review|
+                    |       /build     |
                     +---------+--------+
                               |
           +-------------------+-------------------+
@@ -76,9 +78,10 @@ doraemon
 
 ## Runtime Model
 
-产品层只有两个 mode：
+产品层 mode：
 
 - `plan`
+- `review`
 - `build`
 
 默认 built-in capability groups：
@@ -86,6 +89,11 @@ doraemon
 - `plan`
   - `read`
   - `memory`
+  - `research`
+  - `task`
+
+- `review`
+  - `read`
   - `research`
   - `task`
 
@@ -117,6 +125,12 @@ doraemon
   - `task`
 
 Browser / database 不在默认主链里，只能通过 MCP 扩展接入。
+
+## CLI Review And Policy Commands
+
+- `/review [--base REF] [paths...]`：临时进入只读 review 模式，对工作区变更或指定路径做代码审查。
+- `/tools [all]`：查看当前 mode 下工具可见性、审批要求和 sandbox 分类。
+- `/audit [limit]`：查看最近工具策略检查和执行审计。
 
 ## Provider Config
 

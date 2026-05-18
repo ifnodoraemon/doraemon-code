@@ -1,21 +1,15 @@
 """Targeted coverage for host/tools.py uncovered lines: 220-222,235,259,272-273,297-298,304,370,476,567-569,581-582,599,656-663,764-766,783-786,805-810,822,833,838."""
 
-import asyncio
-import types as py_types
-from typing import Any, Union, get_args, get_origin
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.core.errors import ConfigurationError
 from src.host.tools import (
     LazyToolFunction,
-    ToolAuditEntry,
-    ToolDefinition,
     ToolRegistry,
     _create_registry,
     call_tool,
-    get_default_registry,
-    get_extension_registry,
     get_genai_tools,
     is_sensitive_tool,
 )
@@ -71,7 +65,7 @@ class TestAnnotationToSchemaEdgeCases:
     def test_union_type_with_multiple_non_none(self):
         registry = ToolRegistry()
 
-        def func(x: Union[str, int]):
+        def func(x: str | int):
             pass
 
         registry.register(func, name="union_test")
@@ -104,7 +98,6 @@ class TestAnnotationToSchemaEdgeCases:
 
     def test_annotation_to_schema_empty_annotation(self):
         registry = ToolRegistry()
-        import inspect
 
         def func(x):
             pass
@@ -277,7 +270,7 @@ class TestCreateRegistryCriticalFailure:
 
         specs = [ToolSpec("nonexistent.module.xyz", "func", critical=True)]
         with patch("src.host.tools.load_config", return_value={}):
-            with pytest.raises(Exception):
+            with pytest.raises(ConfigurationError):
                 _create_registry(specs, source="built_in")
 
     def test_non_critical_failure_continues(self):

@@ -93,12 +93,6 @@ gateway = [
     "uvicorn[standard]>=0.23.0",
 ]
 
-# Web UI (~20MB)
-webui = [
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.23.0",
-]
-
 # File watching (~5MB)
 watch = [
     "watchdog>=3.0.0",

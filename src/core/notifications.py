@@ -13,6 +13,7 @@ Features:
 
 import logging
 import platform
+import shutil
 import subprocess
 import time
 from collections.abc import Callable
@@ -105,15 +106,7 @@ class DesktopNotifier:
             return True
         elif self._system == "Linux":
             # Check for notify-send
-            try:
-                subprocess.run(
-                    ["which", "notify-send"],
-                    capture_output=True,
-                    check=True,
-                )
-                return True
-            except subprocess.CalledProcessError:
-                return False
+            return shutil.which("notify-send") is not None
         elif self._system == "Windows":
             try:
                 # Check for Windows 10+ toast notifications
@@ -421,15 +414,21 @@ class NotificationManager:
 
         try:
             import json as _json
+            import urllib.parse
             import urllib.request
 
+            parsed_url = urllib.parse.urlparse(self.config.webhook_url)
+            if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+                logger.error("Webhook failed: invalid webhook URL")
+                return False
+
             data = notification.to_dict()
-            req = urllib.request.Request(
+            req = urllib.request.Request(  # noqa: S310 - scheme and netloc validated above.
                 self.config.webhook_url,
                 data=_json.dumps(data).encode(),
                 headers={"Content-Type": "application/json"},
             )
-            urllib.request.urlopen(req, timeout=5)
+            urllib.request.urlopen(req, timeout=5)  # noqa: S310 - request URL validated above.
             return True
         except Exception as e:
             logger.error("Webhook failed: %s", e)

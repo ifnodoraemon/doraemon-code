@@ -540,6 +540,7 @@ async def lsp_rename(
                 capture_output=True,
                 text=True,
                 timeout=30,
+                check=False,
             )
             files = [f for f in result.stdout.strip().split("\n") if f]
         else:
@@ -597,7 +598,8 @@ async def lsp_definition(path: str, symbol: str) -> str:
                 return f"Definition of '{symbol}':\n\n{first_line}"
         except ImportError:
             return "Error: filesystem module not available"
-        except Exception:
+        except Exception as exc:
+            logger.debug("Definition fallback search failed for pattern %s: %s", pattern, exc)
             continue
 
     return f"Definition not found for '{symbol}'"

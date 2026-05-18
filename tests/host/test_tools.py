@@ -346,6 +346,20 @@ class TestDefaultRegistry:
         assert "task" in registry.get_tool_names()
         assert "update_user_persona" not in registry.get_tool_names()
 
+    def test_review_mode_registry_is_read_only(self):
+        """Review mode should expose review tools without write or execute tools."""
+        review_tools = get_tools_for_mode("review")
+        registry = get_default_registry(review_tools)
+
+        assert set(registry.get_tool_names()) == set(review_tools)
+        assert "read" in registry.get_tool_names()
+        assert "search" in registry.get_tool_names()
+        assert "web_search" in registry.get_tool_names()
+        assert "task" in registry.get_tool_names()
+        assert "write" not in registry.get_tool_names()
+        assert "run" not in registry.get_tool_names()
+        assert "memory_put" not in registry.get_tool_names()
+
     def test_plan_mode_policy_blocks_write_tool(self):
         """Policy should report write tools as hidden in plan mode."""
         registry = get_default_registry()
@@ -443,8 +457,9 @@ class TestLazyToolFunction:
 
 class TestToolAuditEntry:
     def test_to_dict(self):
-        from src.host.tools import ToolAuditEntry
         import time
+
+        from src.host.tools import ToolAuditEntry
 
         entry = ToolAuditEntry(
             timestamp=time.time(),

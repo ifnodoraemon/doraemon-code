@@ -1,7 +1,5 @@
 """Additional coverage tests for core.llm.model_client_direct - _chat_openai, _chat_anthropic, _chat_google, streaming."""
 
-import asyncio
-import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,10 +7,9 @@ import pytest
 
 from src.core.llm.model_client_direct import (
     DirectModelClient,
-    _is_retryable,
     _retry_async,
 )
-from src.core.llm.model_utils import ChatResponse, ClientConfig, Provider, StreamChunk
+from src.core.llm.model_utils import ChatResponse, ClientConfig, Provider
 
 
 def _make_config(**kw):
@@ -517,7 +514,7 @@ class TestStreamAnthropic:
         mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
         mock_stream.__aexit__ = AsyncMock(return_value=False)
         mock_stream.__aiter__ = MagicMock(return_value=iter(events))
-        mock_stream.__anext__ = MagicMock(side_effect=[e for e in events] + [StopAsyncIteration])
+        mock_stream.__anext__ = MagicMock(side_effect=list(events) + [StopAsyncIteration])
 
         async def async_iter():
             for e in events:
@@ -699,7 +696,7 @@ class TestStreamOpenaiViaResponses:
             MockAdapter.build_responses_tools.return_value = None
             MockAdapter.build_responses_params.return_value = {"model": "gpt-4o"}
             with pytest.raises(RuntimeError, match="stream failed"):
-                async for chunk in client._stream_openai_via_responses(
+                async for _chunk in client._stream_openai_via_responses(
                     mock_client, "gpt-4o", [{"role": "user", "content": "hi"}], None, 0.7
                 ):
                     pass

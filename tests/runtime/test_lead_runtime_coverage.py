@@ -6,7 +6,7 @@ import pytest
 
 from src.core.planner import ExecutionPlan, Task, TaskDependency, TaskPriority
 from src.core.tasks import TaskManager, TaskStatus
-from src.runtime.lead import LeadAgentRuntime, WorkerProfile, _TaskExecutionOutcome
+from src.runtime.lead import LeadAgentRuntime, WorkerProfile
 
 
 class StubTurnResult:

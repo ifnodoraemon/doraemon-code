@@ -1,23 +1,20 @@
 """Targeted coverage for host/mcp_runtime.py uncovered lines: 60,107,114,116,118,168-169,259,263,270,285,287,336,339,433,440,446,452-454,476-477,505,525,539-540."""
 
-import asyncio
 import json
-import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
 
 from src.host.mcp_runtime import (
-    MCP_SERVER_FAILURE_COOLDOWN_SECONDS,
     _MCP_SERVER_FAILURE_CACHE,
+    RemoteMCPServerConfig,
+    StdioMCPClient,
+    StreamableHttpMCPClient,
     _clear_server_failure,
     _get_cached_server_failure,
     _remember_server_failure,
     _server_cache_key,
-    RemoteMCPServerConfig,
-    StdioMCPClient,
-    StreamableHttpMCPClient,
     build_remote_mcp_registry,
 )
 
@@ -206,7 +203,6 @@ class TestStdioMcpCloseNoProcess:
 class TestStdioMcpCloseKillOnTimeout:
     @pytest.mark.asyncio
     async def test_close_kills_on_timeout(self):
-        import sys
 
         server = RemoteMCPServerConfig(name="x", transport="stdio", command="sleep", args=["300"])
         client = StdioMCPClient(server)

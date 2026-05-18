@@ -1,20 +1,18 @@
 """Tests for gateway adapters — base, OpenAI, Anthropic, Google."""
 
-import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.gateway.adapters.anthropic_adapter import AnthropicAdapter
 from src.gateway.adapters.base import AdapterConfig, BaseAdapter
-from src.gateway.adapters.openai_adapter import OPENAI_MODELS, OpenAIAdapter
-from src.gateway.adapters.anthropic_adapter import ANTHROPIC_MODELS, AnthropicAdapter
-from src.gateway.adapters.google_adapter import GOOGLE_MODELS, GoogleAdapter
+from src.gateway.adapters.google_adapter import GoogleAdapter
+from src.gateway.adapters.openai_adapter import OpenAIAdapter
 from src.gateway.schema import (
     ChatMessage,
     ChatRequest,
     ChatResponse,
-    Choice,
     FinishReason,
     ModelInfo,
     Role,
@@ -23,7 +21,6 @@ from src.gateway.schema import (
     ToolDefinition,
     Usage,
 )
-
 
 # ── AdapterConfig ────────────────────────────────────────────────────
 
@@ -692,7 +689,7 @@ class TestOpenAIAdapterChatStream:
                 try:
                     return next(self._iter)
                 except StopIteration:
-                    raise StopAsyncIteration
+                    raise StopAsyncIteration from None
 
         stream = AsyncStream([chunk1, chunk2])
         mock_client.chat.completions.create = AsyncMock(return_value=stream)
@@ -732,7 +729,7 @@ class TestOpenAIAdapterChatStream:
                 try:
                     return next(self._iter)
                 except StopIteration:
-                    raise StopAsyncIteration
+                    raise StopAsyncIteration from None
 
         stream = AsyncStream([chunk])
         mock_client.chat.completions.create = AsyncMock(return_value=stream)
@@ -785,7 +782,7 @@ class TestOpenAIAdapterChatStream:
                 try:
                     return next(self._iter)
                 except StopIteration:
-                    raise StopAsyncIteration
+                    raise StopAsyncIteration from None
 
         stream = AsyncStream([chunk])
         mock_client.chat.completions.create = AsyncMock(return_value=stream)
@@ -834,7 +831,7 @@ class TestOpenAIAdapterChatStream:
                 try:
                     return next(self._iter)
                 except StopIteration:
-                    raise StopAsyncIteration
+                    raise StopAsyncIteration from None
 
         stream = AsyncStream([chunk])
         mock_client.chat.completions.create = AsyncMock(return_value=stream)
@@ -900,7 +897,7 @@ class TestGoogleAdapterChatStream:
                 try:
                     return next(self._iter)
                 except StopIteration:
-                    raise StopAsyncIteration
+                    raise StopAsyncIteration from None
 
         stream = AsyncStream([chunk1, chunk2, chunk3])
         mock_client.aio.models.generate_content_stream = AsyncMock(return_value=stream)

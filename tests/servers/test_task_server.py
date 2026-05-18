@@ -1,12 +1,9 @@
 """Tests for servers.task — unified task tool interface."""
 
 import json
-from contextvars import ContextVar
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-from src.core.tasks import TaskClaimError, TaskManager, TaskStatus
+from src.core.tasks import TaskManager, TaskStatus
 from src.servers.task import (
     _dump,
     _normalize_dependencies,
@@ -87,7 +84,6 @@ class TestTaskContextManager:
 
 class TestTaskCreate:
     def test_create_success(self, tmp_path):
-        from src.servers.task import _active_task_manager
 
         mgr = TaskManager(storage_path=tmp_path / "tasks.json")
         token = set_task_manager(mgr)

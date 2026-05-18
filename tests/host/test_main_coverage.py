@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.host.cli.main import (
-    _format_task_tree,
     _find_orchestration_run,
+    _format_task_tree,
     _parse_orchestrate_args,
     _parse_resume_args,
     _resolve_task_root,
@@ -177,8 +177,8 @@ class TestHandleCommand:
     @pytest.mark.asyncio
     async def test_reset_command(self):
         session = MagicMock()
-        with patch("src.host.cli.main.console") as mock_console:
-            result = await handle_command("/reset", session)
+        with patch("src.host.cli.main.console"):
+            await handle_command("/reset", session)
             session.reset.assert_called_once()
 
     @pytest.mark.asyncio
@@ -186,7 +186,7 @@ class TestHandleCommand:
         session = MagicMock()
         session.session_id = "sess-1"
         session.project_dir = "/tmp"
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/session", session)
             assert result is None
 
@@ -195,15 +195,15 @@ class TestHandleCommand:
         session = MagicMock()
         session.mode = "build"
         session.set_mode = AsyncMock()
-        with patch("src.host.cli.main.console") as mock_console:
-            result = await handle_command("/mode plan", session)
+        with patch("src.host.cli.main.console"):
+            await handle_command("/mode plan", session)
             session.set_mode.assert_called_once_with("plan")
 
     @pytest.mark.asyncio
     async def test_mode_command_no_arg(self):
         session = MagicMock()
         session.mode = "build"
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/mode", session)
             assert result is None
 
@@ -211,8 +211,8 @@ class TestHandleCommand:
     async def test_clear_command(self):
         session = MagicMock()
         session._state = MagicMock()
-        with patch("src.host.cli.main.console") as mock_console:
-            result = await handle_command("/clear", session)
+        with patch("src.host.cli.main.console"):
+            await handle_command("/clear", session)
             session._state.clear_history.assert_called_once()
 
     @pytest.mark.asyncio
@@ -222,7 +222,7 @@ class TestHandleCommand:
         trace.session_id = "s1"
         trace.events = [MagicMock(type="tool_call"), MagicMock(type="error")]
         session.get_trace = MagicMock(return_value=trace)
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/trace", session)
             assert result is None
 
@@ -230,14 +230,14 @@ class TestHandleCommand:
     async def test_trace_no_trace(self):
         session = MagicMock()
         session.get_trace = MagicMock(return_value=None)
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/trace", session)
             assert result is None
 
     @pytest.mark.asyncio
     async def test_orchestrate_no_args(self):
         session = MagicMock()
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/orchestrate", session)
             assert result is None
 
@@ -245,7 +245,7 @@ class TestHandleCommand:
     async def test_runs_command_no_runs(self):
         session = MagicMock()
         session.get_orchestration_runs = MagicMock(return_value=[])
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/runs", session)
             assert result is None
 
@@ -256,14 +256,14 @@ class TestHandleCommand:
             {"run_id": "r1", "success": True, "goal": "test goal"}
         ])
         session.get_active_orchestration_run_id = MagicMock(return_value="r1")
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/runs", session)
             assert result is None
 
     @pytest.mark.asyncio
     async def test_resume_no_args(self):
         session = MagicMock()
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/resume", session)
             assert result is None
 
@@ -271,7 +271,7 @@ class TestHandleCommand:
     async def test_tasks_no_task_manager(self):
         session = MagicMock()
         session.get_task_manager = MagicMock(return_value=None)
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/tasks", session)
             assert result is None
 
@@ -282,6 +282,6 @@ class TestHandleCommand:
         tm.list_ready_tasks = MagicMock(return_value=[])
         session.get_task_manager = MagicMock(return_value=tm)
         session.get_orchestration_state = MagicMock(return_value={"root_task_id": "root-1"})
-        with patch("src.host.cli.main.console") as mock_console:
+        with patch("src.host.cli.main.console"):
             result = await handle_command("/tasks ready", session)
             assert result is None

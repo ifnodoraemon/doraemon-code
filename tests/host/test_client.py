@@ -1,6 +1,5 @@
 """Tests for src/host/client.py"""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

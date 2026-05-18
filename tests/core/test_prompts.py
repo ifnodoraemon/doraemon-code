@@ -5,6 +5,7 @@ from src.core.prompts import (
     DEFAULT_MODE,
     PLAN_PROMPT,
     PROMPTS,
+    REVIEW_PROMPT,
     get_system_prompt,
 )
 
@@ -16,14 +17,20 @@ class TestPromptsDict:
     def test_contains_build(self):
         assert "build" in PROMPTS
 
+    def test_contains_review(self):
+        assert "review" in PROMPTS
+
     def test_plan_matches(self):
         assert PROMPTS["plan"] == PLAN_PROMPT
 
     def test_build_matches(self):
         assert PROMPTS["build"] == BUILD_PROMPT
 
-    def test_only_two_modes(self):
-        assert len(PROMPTS) == 2
+    def test_review_matches(self):
+        assert PROMPTS["review"] == REVIEW_PROMPT
+
+    def test_modes(self):
+        assert set(PROMPTS) == {"plan", "review", "build"}
 
 
 class TestDefaultMode:
@@ -43,6 +50,10 @@ class TestGetSystemPrompt:
     def test_build_mode(self):
         result = get_system_prompt(mode="build")
         assert result == BUILD_PROMPT
+
+    def test_review_mode(self):
+        result = get_system_prompt(mode="review")
+        assert result == REVIEW_PROMPT
 
     def test_unknown_mode_falls_back_to_build(self):
         result = get_system_prompt(mode="nonexistent")
@@ -68,7 +79,9 @@ class TestGetSystemPrompt:
     def test_result_is_string(self):
         assert isinstance(get_system_prompt(), str)
         assert isinstance(get_system_prompt(mode="plan"), str)
+        assert isinstance(get_system_prompt(mode="review"), str)
 
     def test_result_non_empty(self):
         assert len(get_system_prompt()) > 0
         assert len(get_system_prompt(mode="plan")) > 0
+        assert len(get_system_prompt(mode="review")) > 0

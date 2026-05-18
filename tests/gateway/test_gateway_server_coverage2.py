@@ -1,7 +1,6 @@
 """Additional coverage tests for gateway.server - middleware, anthropic route, streaming errors, providers endpoint."""
 
 import json
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,8 +10,9 @@ from src.gateway.schema import ChatMessage, ChatResponse, ToolCall, Usage
 
 class TestMiddlewareChain:
     def test_content_length_too_large(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         monkeypatch.setattr("src.gateway.server.MAX_REQUEST_BODY_BYTES", 100)
@@ -26,8 +26,9 @@ class TestMiddlewareChain:
         assert resp.status_code == 413
 
     def test_invalid_content_length(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         client = TestClient(app, raise_server_exceptions=False)
@@ -39,8 +40,9 @@ class TestMiddlewareChain:
         assert resp.status_code == 400
 
     def test_chunked_transfer_oversized(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         monkeypatch.setattr("src.gateway.server.MAX_REQUEST_BODY_BYTES", 50)
@@ -56,8 +58,9 @@ class TestMiddlewareChain:
 
 class TestAnthropicRouteWithToolCalls:
     def test_anthropic_messages_with_tools_non_streaming(self, monkeypatch):
-        from src.gateway.server import app, _build_chat_request_from_anthropic
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         chat_response = ChatResponse(
@@ -76,7 +79,7 @@ class TestAnthropicRouteWithToolCalls:
             ],
             usage=Usage(prompt_tokens=5, completion_tokens=3, total_tokens=8),
         )
-        with patch("src.gateway.server.ModelRouter") as MockRouter:
+        with patch("src.gateway.server.ModelRouter"):
             mock_router = MagicMock()
             mock_router.chat = AsyncMock(return_value=chat_response)
             app.state.router = mock_router
@@ -97,7 +100,7 @@ class TestAnthropicRouteWithToolCalls:
 class TestStreamingError:
     @pytest.mark.asyncio
     async def test_stream_response_error(self):
-        from src.gateway.server import stream_response, ChatRequest
+        from src.gateway.server import ChatRequest, stream_response
 
         class FakeRouter:
             async def chat_stream(self, request, **kw):
@@ -114,8 +117,9 @@ class TestStreamingError:
 
 class TestProvidersEndpoint:
     def test_providers_with_router(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         mock_router = MagicMock()
@@ -127,8 +131,9 @@ class TestProvidersEndpoint:
         assert resp.json()["providers"] == [{"name": "openai", "enabled": True}]
 
     def test_providers_no_router(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         app.state.router = None
@@ -139,8 +144,9 @@ class TestProvidersEndpoint:
 
 class TestHealthEndpoint:
     def test_health_no_router(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         app.state.router = None
@@ -150,8 +156,9 @@ class TestHealthEndpoint:
         assert resp.json()["status"] == "initializing"
 
     def test_health_with_router(self, monkeypatch):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
         monkeypatch.setattr("src.gateway.server.GATEWAY_API_KEY", None)
         monkeypatch.setattr("src.gateway.server.GATEWAY_ALLOW_NO_KEY", True)
         mock_router = MagicMock()

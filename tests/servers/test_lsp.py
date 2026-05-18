@@ -1,7 +1,6 @@
 """Comprehensive tests for src/servers/lsp.py"""
 
 import json
-import os
 import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,8 +9,8 @@ import pytest
 from src.servers.lsp import (
     CompletionItem,
     Diagnostic,
-    PylspClient,
     Position,
+    PylspClient,
     Range,
     _require_lsp,
     _run_mypy,
@@ -693,7 +692,7 @@ class TestPylspClientSendRequestWithProcess:
         client._process.stdout = MagicMock()
         with patch("src.servers.lsp.asyncio.get_running_loop", side_effect=RuntimeError("no loop")):
             try:
-                result = await client._send_request("test", {})
+                await client._send_request("test", {})
             except RuntimeError:
                 pass
 

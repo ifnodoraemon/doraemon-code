@@ -46,7 +46,7 @@ class FileSnapshot:
 
         content_hash = None
         if path.is_file():
-            content_hash = hashlib.md5(path.read_bytes()).hexdigest()
+            content_hash = hashlib.sha256(path.read_bytes()).hexdigest()
 
         stat = path.stat()
         return cls(

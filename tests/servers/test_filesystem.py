@@ -456,8 +456,8 @@ class TestMultiEdit:
 
 class TestReadPathSpecialFormats:
     def test_read_pdf(self, tmp_path, monkeypatch):
-        from src.servers.filesystem import _read_path_content
         from src.servers._services import document
+        from src.servers.filesystem import _read_path_content
 
         (tmp_path / "test.pdf").write_bytes(b"%PDF-1.4")
         os.chdir(tmp_path)
@@ -466,8 +466,8 @@ class TestReadPathSpecialFormats:
         assert result == "PDF content"
 
     def test_read_docx(self, tmp_path, monkeypatch):
-        from src.servers.filesystem import _read_path_content
         from src.servers._services import document
+        from src.servers.filesystem import _read_path_content
 
         (tmp_path / "test.docx").write_bytes(b"PK")
         os.chdir(tmp_path)
@@ -476,8 +476,8 @@ class TestReadPathSpecialFormats:
         assert result == "DOCX content"
 
     def test_read_pptx(self, tmp_path, monkeypatch):
-        from src.servers.filesystem import _read_path_content
         from src.servers._services import document
+        from src.servers.filesystem import _read_path_content
 
         (tmp_path / "test.pptx").write_bytes(b"PK")
         os.chdir(tmp_path)
@@ -486,8 +486,8 @@ class TestReadPathSpecialFormats:
         assert result == "PPTX content"
 
     def test_read_xlsx(self, tmp_path, monkeypatch):
-        from src.servers.filesystem import _read_path_content
         from src.servers._services import document
+        from src.servers.filesystem import _read_path_content
 
         (tmp_path / "test.xlsx").write_bytes(b"PK")
         os.chdir(tmp_path)
@@ -496,8 +496,8 @@ class TestReadPathSpecialFormats:
         assert result == "XLSX content"
 
     def test_read_image(self, tmp_path, monkeypatch):
-        from src.servers.filesystem import _read_path_content
         from src.servers._services import vision
+        from src.servers.filesystem import _read_path_content
 
         (tmp_path / "test.png").write_bytes(b"\x89PNG")
         os.chdir(tmp_path)
@@ -561,7 +561,7 @@ class TestGrepSearchWithMaxResults:
         with open(os.path.join(temp_dir, "many.txt"), "w") as handle:
             handle.write("".join(f"match {i}\n" for i in range(200)))
         result = grep_search("match", include="*.txt", max_results=5)
-        lines = [l for l in result.strip().split("\n") if l.strip()]
+        lines = [line for line in result.strip().split("\n") if line.strip()]
         assert len(lines) <= 5
 
 
@@ -606,8 +606,8 @@ class TestListPathTreeEmpty:
 
 class TestFindSymbol:
     def test_find_symbol(self, temp_dir, monkeypatch):
-        from src.servers.filesystem import find_symbol
         from src.servers._services import code_nav
+        from src.servers.filesystem import find_symbol
 
         os.chdir(temp_dir)
         monkeypatch.setattr(code_nav, "find_definition", lambda p, s: f"Found: {s}")

@@ -1,9 +1,7 @@
 """Targeted coverage tests for agent.doraemon."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from src.agent.doraemon import DoraemonAgent, create_doraemon_agent
 

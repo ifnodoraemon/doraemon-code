@@ -33,30 +33,6 @@ mypy src/
 doraemon
 ```
 
-运行 Web UI：
-
-```bash
-cd webui
-npm ci
-npm run build
-cd ..
-python -m src.webui.server
-```
-
-Web UI 开发模式：
-
-```bash
-python -m src.webui.server
-cd webui
-npm run dev
-```
-
-说明：
-
-- 后端默认直接服务 `src/webui/static` 里的已构建资源
-- 如果根路径返回 `503 Web UI bundle is missing or incomplete`，重新执行 `cd webui && npm ci && npm run build`
-- `webui/node_modules` 不再纳入版本管理，依赖必须通过 `npm ci` 重建
-
 运行 Gateway：
 
 ```bash
@@ -97,8 +73,6 @@ python3 scripts/run_benchmark.py --suite real_repo --limit 5
   - built-in tools
 - `src/gateway`
   - model gateway
-- `src/webui`
-  - web UI
 - `tests`
   - unit / integration / eval / benchmark tests
 

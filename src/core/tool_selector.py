@@ -27,6 +27,7 @@ CAPABILITY_GROUPS: dict[str, list[str]] = {
 
 MODE_CAPABILITY_GROUPS: dict[str, list[str]] = {
     "plan": ["read", "memory", "research", "task"],
+    "review": ["read", "research", "task"],
     "build": ["read", "edit", "memory", "research", "task"],
 }
 
@@ -34,7 +35,7 @@ class ToolSelector:
     """
     Product-facing tool selector.
 
-    Only exposes two modes: `plan` and `build`.
+    Exposes product modes with stable capability groups.
     Each mode expands to a stable set of capability groups.
     """
 

@@ -1,6 +1,5 @@
 """Tests for src/servers/_services/vision.py"""
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +7,6 @@ import pytest
 from src.servers._services.vision import (
     GoogleAdapter,
     OpenAIAdapter,
-    VisionAdapter,
     get_vision_adapter,
     process_image,
     process_image_async,
@@ -380,5 +378,5 @@ class TestProcessImageAsync:
     @pytest.mark.asyncio
     async def test_async_with_custom_prompt(self):
         with patch("src.servers._services.vision.process_image", return_value="ok") as mock_proc:
-            result = await process_image_async("img.png", "custom prompt")
+            await process_image_async("img.png", "custom prompt")
             mock_proc.assert_called_once_with("img.png", "custom prompt")

@@ -8,7 +8,6 @@ import pytest
 
 from src.agent.adapter import (
     AgentSession,
-    AgentTurnResult,
     _collect_modified_paths,
     _message_from_session_data,
     _message_to_session_data,
@@ -142,7 +141,7 @@ class TestAgentSessionClose:
         mock_runtime.aclose = AsyncMock()
         session._runtime = mock_runtime
         session._trace = None
-        result = await session.aclose()
+        await session.aclose()
         mock_runtime.aclose.assert_called_once()
         assert session.model_client is None
         assert session.registry is None

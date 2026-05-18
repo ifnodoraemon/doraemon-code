@@ -2,9 +2,7 @@
 
 import base64
 import json
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from src.core.llm.providers.google import (
     GoogleAdapter,
@@ -69,14 +67,14 @@ class TestBuildGoogleContentParts:
     def test_string_content(self):
         mock_types = MagicMock()
         mock_types.Part = MagicMock(return_value=MagicMock())
-        result = build_google_content_parts("hello", mock_types)
+        build_google_content_parts("hello", mock_types)
         mock_types.Part.assert_called_once_with(text="hello")
 
     def test_list_with_text(self):
         mock_types = MagicMock()
         mock_types.Part = MagicMock(return_value=MagicMock())
         content = [{"type": "text", "text": "hi"}]
-        result = build_google_content_parts(content, mock_types)
+        build_google_content_parts(content, mock_types)
         mock_types.Part.assert_called_with(text="hi")
 
     def test_list_with_image(self):
@@ -89,7 +87,7 @@ class TestBuildGoogleContentParts:
                 "source": {"media_type": "image/png", "data": "aGVsbG8="},
             }
         ]
-        result = build_google_content_parts(content, mock_types)
+        build_google_content_parts(content, mock_types)
         mock_types.Part.from_bytes.assert_called_once()
 
     def test_empty_content(self):
@@ -362,7 +360,7 @@ class TestGoogleAdapterBuildConfig:
         tools = [
             ToolDefinition(name="fn", description="d", parameters={"type": "object"})
         ]
-        config = GoogleAdapter.build_config(
+        GoogleAdapter.build_config(
             tools, None, 0.7, 100, types
         )
         types.GenerateContentConfig.assert_called_once()
@@ -371,7 +369,7 @@ class TestGoogleAdapterBuildConfig:
         types = MagicMock()
         types.GenerateContentConfig = MagicMock(return_value=MagicMock())
 
-        config = GoogleAdapter.build_config(
+        GoogleAdapter.build_config(
             None, "sys", 0.7, 100, types
         )
         call_kwargs = types.GenerateContentConfig.call_args[1]
@@ -381,7 +379,7 @@ class TestGoogleAdapterBuildConfig:
         types = MagicMock()
         types.GenerateContentConfig = MagicMock(return_value=MagicMock())
 
-        config = GoogleAdapter.build_config(None, None, 0.7, 200, types)
+        GoogleAdapter.build_config(None, None, 0.7, 200, types)
         call_kwargs = types.GenerateContentConfig.call_args[1]
         assert call_kwargs["max_output_tokens"] == 200
 
@@ -389,7 +387,7 @@ class TestGoogleAdapterBuildConfig:
         types = MagicMock()
         types.GenerateContentConfig = MagicMock(return_value=MagicMock())
 
-        config = GoogleAdapter.build_config(None, None, 0.7, None, types)
+        GoogleAdapter.build_config(None, None, 0.7, None, types)
         call_kwargs = types.GenerateContentConfig.call_args[1]
         assert "max_output_tokens" not in call_kwargs
 
@@ -411,5 +409,5 @@ class TestGoogleAdapterBuildConfig:
                 }
             }
         ]
-        config = GoogleAdapter.build_config(tools, None, 0.7, None, types)
+        GoogleAdapter.build_config(tools, None, 0.7, None, types)
         types.FunctionDeclaration.assert_called_once()

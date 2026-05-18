@@ -62,7 +62,7 @@ def create_test_agent_state(
     Create an AgentState for testing.
 
     Args:
-        mode: Agent mode (plan/build)
+        mode: Agent mode (plan/review/build)
         max_turns: Maximum turns
 
     Returns:

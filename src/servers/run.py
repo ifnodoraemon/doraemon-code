@@ -267,8 +267,8 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
                 for line in iter(process.stdout.readline, ""):
                     output_queue.put(line)
                 process.stdout.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Shell output reader stopped: %s", exc)
 
         t = threading.Thread(target=reader_thread, daemon=True)
         t.start()
@@ -365,6 +365,7 @@ def _run_python(code: str, timeout: int) -> str:
             "capture_output": True,
             "text": True,
             "timeout": timeout,
+            "check": False,
         }
 
         if platform.system() != "Windows":
@@ -393,8 +394,8 @@ def _run_python(code: str, timeout: int) -> str:
             tmp_dir = os.path.dirname(script_path)
             try:
                 shutil.rmtree(tmp_dir, ignore_errors=True)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to remove temporary script directory %s: %s", tmp_dir, exc)
 
 
 def _run_background(command: str, working_dir: str | None) -> str:
@@ -461,6 +462,7 @@ def _run_install(package_name: str) -> str:
             capture_output=True,
             text=True,
             timeout=120,
+            check=False,
         )
 
         if result.returncode == 0:

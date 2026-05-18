@@ -165,8 +165,9 @@ class StreamableHttpMCPClient:
                 )
                 await asyncio.sleep(backoff)
 
-        assert last_error is not None
-        raise last_error
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError(f"MCP server '{self.server.name}' request failed without an error")
 
     async def initialize(self) -> None:
         """Perform MCP initialization handshake."""
@@ -342,7 +343,8 @@ class StdioMCPClient:
 
     async def _read_response(self, expected_id: int | None) -> dict[str, Any]:
         process = await self._ensure_process()
-        assert process.stdout is not None
+        if process.stdout is None:
+            raise RuntimeError(f"MCP stdio server '{self.server.name}' has no stdout")
 
         while True:
             line = await process.stdout.readline()
@@ -358,7 +360,8 @@ class StdioMCPClient:
         self, payload: dict[str, Any], *, expect_response: bool
     ) -> dict[str, Any] | None:
         process = await self._ensure_process()
-        assert process.stdin is not None
+        if process.stdin is None:
+            raise RuntimeError(f"MCP stdio server '{self.server.name}' has no stdin")
 
         async with self._lock:
             process.stdin.write((json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8"))
@@ -387,7 +390,8 @@ class StdioMCPClient:
             },
             expect_response=True,
         )
-        assert response is not None
+        if response is None:
+            raise RuntimeError(f"MCP stdio server '{self.server.name}' did not return initialize response")
         result = response.get("result") or {}
         self._protocol_version = result.get("protocolVersion") or MCP_PROTOCOL_VERSION
 
@@ -411,7 +415,8 @@ class StdioMCPClient:
             },
             expect_response=True,
         )
-        assert response is not None
+        if response is None:
+            raise RuntimeError(f"MCP stdio server '{self.server.name}' did not return tools/list response")
         result = response.get("result") or {}
         return [
             RemoteMCPTool(
@@ -441,7 +446,8 @@ class StdioMCPClient:
             },
             expect_response=True,
         )
-        assert response is not None
+        if response is None:
+            raise RuntimeError(f"MCP stdio server '{self.server.name}' did not return tools/call response")
         result = response.get("result") or {}
         if result.get("isError"):
             return f"Error: {json.dumps(result, ensure_ascii=False)}"
@@ -461,9 +467,11 @@ class StdioMCPClient:
 
         if process.returncode is None:
             process.terminate()
+            wait_coro = process.wait()
             try:
-                await asyncio.wait_for(process.wait(), timeout=2.0)
+                await asyncio.wait_for(wait_coro, timeout=2.0)
             except TimeoutError:
+                wait_coro.close()
                 process.kill()
                 await process.wait()
         self._process = None

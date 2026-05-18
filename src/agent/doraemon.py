@@ -606,6 +606,26 @@ Available tools are for reading and searching only."""
                 )
             return base_prompt
 
+        if self.state.mode == "review":
+            base_prompt = """You are a senior code reviewer. Inspect the requested changes or files and return actionable findings.
+
+IMPORTANT:
+- Use read-only tools to inspect diffs, files, and relevant call sites
+- Do NOT modify files
+- Do NOT execute commands
+- Prioritize correctness, regressions, security, concurrency, data loss, and missing tests
+- Lead with findings ordered by severity and include file/line references when possible
+- If no issues are found, say so clearly and mention residual risk
+
+Available tools are for reading, searching, and research only."""
+            if self.worker_role:
+                return (
+                    f"{base_prompt}\n\nEXECUTION PROFILE:\n"
+                    f"- You are operating under the '{self.worker_role}' profile for a coordinating agent.\n"
+                    "- Stay within your visible tool scope and return concrete findings."
+                )
+            return base_prompt
+
         base_prompt = """You are a coding agent. Complete the given task using available tools.
 
 OPERATING PRINCIPLES:

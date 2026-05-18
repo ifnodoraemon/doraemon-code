@@ -287,7 +287,7 @@ class PermissionManager:
 
         Args:
             rules: Custom rules (uses defaults if None)
-            mode: Current mode (plan/build)
+            mode: Current mode (plan/review/build)
             approval_callback: Function to call for HITL approval
         """
         self._rules = rules or DEFAULT_RULES.copy()
@@ -339,14 +339,14 @@ class PermissionManager:
             request.operation = self.TOOL_OPERATIONS.get(request.tool, OperationType.READ)
 
         # Mode-based restrictions
-        if self._mode == "plan" and request.operation in (
+        if self._mode in {"plan", "review"} and request.operation in (
             OperationType.WRITE,
             OperationType.DELETE,
             OperationType.EXECUTE,
         ):
             return PermissionResult(
                 level=PermissionLevel.DENY,
-                message="Write operations not allowed in plan mode",
+                message=f"Write operations not allowed in {self._mode} mode",
             )
 
         # Check if already approved in this session (with expiry)

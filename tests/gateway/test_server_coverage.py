@@ -8,12 +8,10 @@ from fastapi.testclient import TestClient
 from src.gateway.server import (
     _anthropic_stop_reason,
     _build_chat_request_from_anthropic,
-    _build_chat_request_from_openai,
     _convert_chat_response_to_anthropic,
     _parse_tool_call_arguments,
     app,
     verify_api_key,
-    load_config,
 )
 
 
@@ -121,7 +119,7 @@ class TestConvertChatResponseToAnthropic:
         assert result["stop_reason"] == "end_turn"
 
     def test_with_object_choice(self):
-        from src.gateway.schema import ChatResponse, Choice, ChatMessage, Usage
+        from src.gateway.schema import ChatMessage, ChatResponse, Choice, Usage
 
         msg = ChatMessage(role="assistant", content="hello")
         resp = ChatResponse(
@@ -140,7 +138,7 @@ class TestConvertChatResponseToAnthropic:
         assert result["role"] == "assistant"
 
     def test_with_tool_calls_as_objects(self):
-        from src.gateway.schema import ChatResponse, Choice, ChatMessage, ToolCall, Usage
+        from src.gateway.schema import ChatMessage, ChatResponse, Choice, ToolCall, Usage
 
         tc = ToolCall(id="c1", name="read", arguments={"path": "/f"})
         msg = ChatMessage(role="assistant", content="using tool", tool_calls=[tc])
@@ -164,7 +162,11 @@ class TestConvertChatResponseToAnthropic:
 
 class TestBuildChatRequestFromAnthropic:
     def test_with_system_and_tool_result(self):
-        from src.gateway.server import AnthropicMessage, AnthropicMessagesRequest, AnthropicToolDefinition
+        from src.gateway.server import (
+            AnthropicMessage,
+            AnthropicMessagesRequest,
+            AnthropicToolDefinition,
+        )
 
         req = AnthropicMessagesRequest(
             model="claude-3",

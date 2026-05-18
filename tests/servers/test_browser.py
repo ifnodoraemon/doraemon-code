@@ -14,7 +14,7 @@ _mock_playwright = MagicMock()
 sys.modules.setdefault("playwright", _mock_playwright)
 sys.modules.setdefault("playwright.async_api", MagicMock())
 
-from src.servers import browser as browser_mod
+from src.servers import browser as browser_mod  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

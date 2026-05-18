@@ -1,6 +1,5 @@
 """Tests for src.core.home."""
 
-import json
 import os
 import time
 from pathlib import Path
@@ -175,7 +174,6 @@ class TestTrace:
         traces_dir.mkdir(parents=True)
         old_file = traces_dir / "old.json"
         old_file.write_text("{}")
-        import os
 
         os.utime(old_file, (time.time() - 31 * 86400, time.time() - 31 * 86400))
         Trace._cleanup_old_traces(traces_dir, max_files=200, max_age_days=30)

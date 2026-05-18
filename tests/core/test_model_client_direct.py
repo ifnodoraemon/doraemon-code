@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.core.llm.model_client_direct import (
+    DirectModelClient,
     _is_google_openai_compatible_base,
     _is_retryable,
     _retry_async,
-    DirectModelClient,
 )
 from src.core.llm.model_utils import ClientConfig, Provider
 
@@ -133,8 +133,6 @@ class TestDirectModelClientInit:
             client._detect_provider("gpt-4o")
 
     def test_should_fallback_to_chat_completions(self):
-        config = ClientConfig(model="gpt-4o")
-        client = DirectModelClient(config)
         assert (
             DirectModelClient._should_fallback_to_chat_completions(Exception("404 not found"))
             is True
@@ -362,7 +360,7 @@ class TestContextManager:
         client = DirectModelClient(config)
         with patch.object(client, "connect", new_callable=AsyncMock) as mock_connect:
             with patch.object(client, "close", new_callable=AsyncMock):
-                result = await client.__aenter__()
+                await client.__aenter__()
                 mock_connect.assert_called_once()
 
     @pytest.mark.asyncio

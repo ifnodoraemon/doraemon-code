@@ -1,12 +1,12 @@
 """Tests for gateway.router — ModelRouter."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.gateway.adapters.base import AdapterConfig, BaseAdapter
-from src.gateway.schema import ChatMessage, ChatRequest, ChatResponse, Choice, ModelInfo, Role
+from src.gateway.adapters.base import BaseAdapter
 from src.gateway.router import ModelRouter
+from src.gateway.schema import ChatMessage, ChatRequest, ChatResponse, ModelInfo, Role, StreamChunk
 
 
 def _make_mock_adapter(provider: str, models: list[ModelInfo] | None = None) -> BaseAdapter:

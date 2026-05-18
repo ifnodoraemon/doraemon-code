@@ -1,6 +1,5 @@
 """Tests for src.core.logger."""
 
-import json
 import logging
 from pathlib import Path
 from unittest.mock import patch

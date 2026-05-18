@@ -1,6 +1,5 @@
 """Comprehensive tests for hooks.py"""
 
-import asyncio
 import json
 import time
 

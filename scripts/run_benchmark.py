@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -52,6 +53,18 @@ def materialize_files(task: dict[str, Any], sandbox_dir: Path) -> None:
         file_path.write_text(content, encoding="utf-8")
 
 
+def split_verify_command(command: str) -> list[str]:
+    """Split a verifier command without invoking a shell."""
+    if any(char in command for char in "|&;<>`") or "$(" in command:
+        raise ValueError("Verifier command uses shell syntax, which is not supported")
+
+    argv = shlex.split(command)
+    if not argv:
+        raise ValueError("Verifier command is empty")
+
+    return argv
+
+
 def run_verify(task: dict[str, Any], sandbox_dir: Path, timeout: int) -> dict[str, Any]:
     verify = task.get("verify") or {}
     if verify.get("type") != "command":
@@ -61,13 +74,18 @@ def run_verify(task: dict[str, Any], sandbox_dir: Path, timeout: int) -> dict[st
     if not command:
         return {"success": False, "output": "Verifier command is empty"}
 
+    try:
+        argv = split_verify_command(command)
+    except ValueError as exc:
+        return {"success": False, "output": str(exc)}
+
     completed = subprocess.run(
-        command,
-        shell=True,
+        argv,
         cwd=sandbox_dir,
         capture_output=True,
         text=True,
         timeout=timeout,
+        check=False,
     )
     output = (completed.stdout or "") + (completed.stderr or "")
     return {

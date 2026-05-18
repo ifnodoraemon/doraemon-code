@@ -1,6 +1,5 @@
 """Additional coverage tests for agent.adapter - run_agent_turn display, AgentSession lifecycle, turn, turn_stream, orchestrate, _restore/_save session state, spawn_worker."""
 
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,13 +7,9 @@ import pytest
 
 from src.agent.adapter import (
     AgentSession,
-    AgentTurnResult,
     _collect_modified_paths,
-    _message_from_session_data,
-    _message_to_session_data,
     run_agent_turn,
 )
-from src.agent.types import Message
 
 
 class TestRunAgentTurnDisplayCallback:

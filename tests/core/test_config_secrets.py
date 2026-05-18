@@ -1,13 +1,11 @@
-import os
 
-import pytest
 
 from src.core.config.secrets import (
+    _ENV_OVERRIDES,
+    SERVICE_NAME,
     is_sensitive_header,
     mcp_header_key,
     resolve_mcp_headers,
-    SERVICE_NAME,
-    _ENV_OVERRIDES,
 )
 
 
@@ -31,7 +29,7 @@ class TestMcpHeaderKey:
         assert key == "mcp:myserver:header:Authorization"
 
 
-class TestResolveMcpHeaders:
+class TestResolveMcpHeadersWithSecrets:
     def test_non_sensitive_passthrough(self):
         result = resolve_mcp_headers("srv", {"Content-Type": "application/json"})
         assert result["Content-Type"] == "application/json"

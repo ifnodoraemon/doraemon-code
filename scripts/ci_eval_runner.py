@@ -11,8 +11,9 @@ CI Evaluation Runner
 
 import argparse
 import json
-import os
+import random
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -45,7 +46,6 @@ def get_task_files(scope: str) -> list:
 def run_evaluation(scope: str, output_dir: str) -> dict:
     """运行评估"""
     from tests.evals.comprehensive_evaluator import ComprehensiveEvaluator
-    from tests.evals.agent_evaluator import AgentEvaluator
 
     # 创建输出目录
     output_path = Path(output_dir)
@@ -63,9 +63,6 @@ def run_evaluation(scope: str, output_dir: str) -> dict:
     # 创建 Mock Agent（CI 环境中使用）
     class MockAgent:
         def execute(self, prompt: str):
-            import time
-            import random
-
             time.sleep(random.uniform(0.1, 0.3))
 
             class Response:

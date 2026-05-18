@@ -108,8 +108,8 @@ def load_user_settings() -> dict[str, Any]:
     if settings_path.exists():
         try:
             return json.loads(settings_path.read_text())
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to load user settings from %s: %s", settings_path, exc)
     return DEFAULT_USER_SETTINGS.copy()
 
 

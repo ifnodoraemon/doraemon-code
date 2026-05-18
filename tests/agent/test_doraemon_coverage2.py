@@ -1,12 +1,11 @@
 """Additional coverage tests for agent.doraemon - execute_tool, run with trace, _begin/_finish runtime task, permission checks, state management."""
 
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agent.doraemon import DoraemonAgent, create_doraemon_agent
+from src.agent.doraemon import create_doraemon_agent
 
 
 def _make_agent(**kw):
@@ -172,7 +171,7 @@ class TestRuntimeTaskManagement:
         tm.claim_task = MagicMock()
         agent.task_manager = tm
         long_input = "x" * 100
-        task_id = agent._begin_runtime_task(long_input)
+        agent._begin_runtime_task(long_input)
         create_call = tm.create_task.call_args
         assert len(create_call[1]["title"]) <= 80
 
@@ -205,7 +204,7 @@ class TestRunWithTrace:
         agent._trace = MagicMock()
         with patch("src.agent.react.ReActAgent.run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = SimpleNamespace(success=True, error=None, response="ok", tool_calls=[], tokens_used=0)
-            result = await agent.run("test input")
+            await agent.run("test input")
         agent._trace.start_turn.assert_called_once()
         agent._trace.end_turn.assert_called_once()
 

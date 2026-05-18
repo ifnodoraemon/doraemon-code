@@ -45,6 +45,17 @@ def test_run_verify_command_success(tmp_path: Path):
     assert result["success"] is True
 
 
+def test_run_verify_rejects_shell_syntax(tmp_path: Path):
+    result = run_benchmark.run_verify(
+        {"verify": {"type": "command", "command": "python -m pytest -q test_ok.py; touch bad"}},
+        tmp_path,
+        timeout=30,
+    )
+
+    assert result["success"] is False
+    assert "shell syntax" in result["output"]
+
+
 def test_summarize_empty():
     assert run_benchmark.summarize([]) == {
         "total_tasks": 0,

@@ -1,14 +1,13 @@
 """Additional coverage tests for runtime.lead - execute with parallel subtasks, resume with prior state, worker assignment, priority mapping."""
 
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
-from src.core.planner import ExecutionPlan, Task, TaskDependency, TaskPriority
+from src.core.planner import ExecutionPlan, Task, TaskPriority
 from src.core.tasks import TaskManager, TaskStatus
-from src.runtime.lead import LeadAgentRuntime, WorkerProfile, _TaskExecutionOutcome
+from src.runtime.lead import LeadAgentRuntime, WorkerProfile
 
 
 class StubTurnResult:

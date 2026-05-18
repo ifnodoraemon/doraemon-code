@@ -1,8 +1,7 @@
 """Comprehensive tests for notifications.py"""
 
-import subprocess
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from src.core.notifications import (
     DesktopNotifier,
@@ -206,16 +205,15 @@ class TestDesktopNotifier:
         assert notifier._available is True
 
     @patch("platform.system", return_value="Linux")
-    @patch("subprocess.run")
-    def test_check_availability_linux_available(self, mock_run, mock_system):
+    @patch("shutil.which", return_value="/usr/bin/notify-send")
+    def test_check_availability_linux_available(self, mock_which, mock_system):
         """Test availability check on Linux when notify-send is available."""
-        mock_run.return_value = MagicMock(returncode=0)
         notifier = DesktopNotifier()
         assert notifier._available is True
 
     @patch("platform.system", return_value="Linux")
-    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "which"))
-    def test_check_availability_linux_unavailable(self, mock_run, mock_system):
+    @patch("shutil.which", return_value=None)
+    def test_check_availability_linux_unavailable(self, mock_which, mock_system):
         """Test availability check on Linux when notify-send is unavailable."""
         notifier = DesktopNotifier()
         assert notifier._available is False
@@ -789,6 +787,16 @@ class TestNotificationManagerChannels:
         notif = Notification(title="T", message="M")
         result = manager._send_webhook(notif)
         assert result is False
+
+    @patch("urllib.request.urlopen")
+    def test_send_webhook_rejects_non_http_url(self, mock_urlopen):
+        """Test webhook channel rejects non-HTTP schemes."""
+        config = NotificationConfig(webhook_url="file:///tmp/webhook")
+        manager = NotificationManager(config)
+        notif = Notification(title="T", message="M")
+        result = manager._send_webhook(notif)
+        assert result is False
+        mock_urlopen.assert_not_called()
 
     def test_send_channel_sound_disabled(self):
         """Test sound channel when sound is disabled."""

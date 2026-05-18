@@ -3,8 +3,6 @@
 import subprocess
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.servers.lint import (
     LintIssue,
     _check_tool_installed,

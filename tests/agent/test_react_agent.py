@@ -8,7 +8,6 @@ _compress_context, _execute_tools_parallel, and related methods.
 """
 
 import asyncio
-import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -25,10 +24,7 @@ from src.agent.base import (
 from src.agent.react import ReActAgent, TraceInterface
 from src.agent.state import AgentState
 from src.agent.types import (
-    Action,
     ActionType,
-    AgentResult,
-    Message,
     Observation,
     Thought,
     ToolCall,
@@ -1044,6 +1040,29 @@ class TestExecuteToolsParallel:
         ]
         results = await agent._execute_tools_parallel(tool_calls)
         assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_sequential_for_multi_edit_tool(self, agent):
+        active = 0
+        max_active = 0
+
+        async def executor(_name, _args):
+            nonlocal active, max_active
+            active += 1
+            max_active = max(max_active, active)
+            await asyncio.sleep(0)
+            active -= 1
+            return "ok", None
+
+        agent.set_tool_executor(executor)
+        tool_calls = [
+            {"name": "multi_edit", "arguments": {"path": "a"}},
+            {"name": "read", "arguments": {"path": "b"}},
+        ]
+        results = await agent._execute_tools_parallel(tool_calls)
+
+        assert len(results) == 2
+        assert max_active == 1
 
     @pytest.mark.asyncio
     async def test_parallel_with_string_args(self, agent):

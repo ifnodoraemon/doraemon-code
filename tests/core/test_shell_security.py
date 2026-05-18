@@ -1,11 +1,6 @@
-import subprocess
 import threading
-import time
-
-import pytest
 
 from src.core.security.shell_security import (
-    BackgroundProcess,
     ShellConfig,
     check_git_safety,
     cleanup_finished_processes,
@@ -13,7 +8,6 @@ from src.core.security.shell_security import (
     get_process_lock,
     is_command_blocked,
     is_command_sensitive,
-    register_background_process,
     truncate_output,
 )
 

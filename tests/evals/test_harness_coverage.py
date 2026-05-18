@@ -1,7 +1,7 @@
 """Targeted coverage tests for evals.harness - TaskRunner.execute, check_assertions."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

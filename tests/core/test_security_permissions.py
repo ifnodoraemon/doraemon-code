@@ -1,8 +1,5 @@
 import json
 import time
-from pathlib import Path
-
-import pytest
 
 from src.core.security.permissions import (
     AuditEntry,
@@ -138,6 +135,16 @@ class TestPermissionManager:
         pm = PermissionManager(mode="plan")
         result = pm.check(PermissionRequest(tool="run", operation=OperationType.EXECUTE))
         assert result.is_allowed is False
+
+    def test_check_review_mode_blocks_write_and_execute(self):
+        pm = PermissionManager(mode="review")
+
+        write_result = pm.check(PermissionRequest(tool="write", operation=OperationType.WRITE))
+        execute_result = pm.check(PermissionRequest(tool="run", operation=OperationType.EXECUTE))
+
+        assert write_result.is_allowed is False
+        assert "review mode" in write_result.message.lower()
+        assert execute_result.is_allowed is False
 
     def test_check_plan_mode_allows_read(self):
         pm = PermissionManager(mode="plan")

@@ -9,10 +9,8 @@ from pathlib import Path
 from src.servers.memory import (
     _deserialize_note,
     _keyword_search_notes,
-    _load_note_by_title,
     _load_project_notes,
     _notes_dir,
-    _notes_root,
     _resolve_note_path,
     _serialize_note,
     _slugify,

@@ -1,9 +1,6 @@
 """Additional coverage tests for servers.filesystem - edit edge cases, create_directory, move, copy, search, notebook ops."""
 
 import json
-import os
-
-import pytest
 
 from src.servers.filesystem import (
     _apply_path_edits,
@@ -12,7 +9,6 @@ from src.servers.filesystem import (
     _delete_path,
     _move_path,
     _read_path_content,
-    _replace_path_content,
     _write_path_content,
     multi_edit,
     notebook_edit,
@@ -335,7 +331,7 @@ class TestMultiEditEdgeCases:
         f.write_text("hello")
         f.chmod(0o444)
         try:
-            result = multi_edit(str(f), [{"old_string": "hello", "new_string": "world"}])
+            multi_edit(str(f), [{"old_string": "hello", "new_string": "world"}])
         finally:
             f.chmod(0o644)
 

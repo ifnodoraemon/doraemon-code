@@ -1,15 +1,13 @@
 from pathlib import Path
 
-import pytest
-
 from src.core.paths import (
     STATE_DIRNAME,
     checkpoints_dir,
     chroma_dir,
     config_path,
     conversations_dir,
-    hooks_path,
     history_dir,
+    hooks_path,
     layered_memory_dir,
     local_plugins_dir,
     logs_dir,

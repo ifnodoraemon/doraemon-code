@@ -1,7 +1,8 @@
 """Tests for src/core/browser.py"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.core.browser import BrowserConfig, BrowserManager, PageInfo, get_browser_manager
 

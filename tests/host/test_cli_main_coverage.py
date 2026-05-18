@@ -1,15 +1,15 @@
 """Targeted coverage tests for host.cli.main."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from src.host.cli.main import (
+    _find_orchestration_run,
+    _format_task_tree,
     _parse_orchestrate_args,
     _parse_resume_args,
-    _format_task_tree,
-    _find_orchestration_run,
     _resolve_task_root,
     handle_command,
 )
@@ -129,7 +129,7 @@ class TestHandleCommandAdditional:
         printed = []
         session = SimpleNamespace()
         monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
-        result = await handle_command("/h", session)
+        await handle_command("/h", session)
         assert any("Commands" in str(p) for p in printed)
 
     @pytest.mark.asyncio
@@ -137,7 +137,7 @@ class TestHandleCommandAdditional:
         printed = []
         session = SimpleNamespace()
         monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
-        result = await handle_command("/?", session)
+        await handle_command("/?", session)
         assert any("Commands" in str(p) for p in printed)
 
     @pytest.mark.asyncio
@@ -165,5 +165,5 @@ class TestHandleCommandAdditional:
         printed = []
         session = SimpleNamespace()
         monkeypatch.setattr("src.host.cli.main.console.print", lambda message: printed.append(message))
-        result = await handle_command("/resume run-1 extra", session)
+        await handle_command("/resume run-1 extra", session)
         assert any("Usage" in p for p in printed)

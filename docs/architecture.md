@@ -9,7 +9,7 @@
 
 ```mermaid
 flowchart TD
-    U[User / CLI] --> M[Mode: plan or build]
+    U[User / CLI] --> M[Mode: plan, review, or build]
     M --> B[Built-in Tools]
     M --> S[Skills]
     B --> A[Agent Runtime]
@@ -23,9 +23,10 @@ flowchart TD
 
 ## Mode
 
-产品入口只有两个：
+产品入口：
 
 - `plan`
+- `review`
 - `build`
 
 ## Built-in Tools
@@ -57,6 +58,10 @@ Mode 到 capability groups 的映射：
   - `memory`
   - `research`
   - `task`
+- `review`
+  - `read`
+  - `research`
+  - `task`
 - `build`
   - `read`
   - `edit`
@@ -75,7 +80,7 @@ Persona 和 generic memory 分开：
   - `update_user_persona`
   - `get_user_persona`
 
-persona 不属于默认 `plan/build` built-in tool surface。
+persona 不属于默认 `plan/review/build` built-in tool surface。
 
 ## Skills
 

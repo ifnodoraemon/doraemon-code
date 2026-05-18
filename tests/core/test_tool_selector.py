@@ -37,3 +37,15 @@ class TestToolSelector:
 
         assert "task" in plan_tools
         assert "task" in build_tools
+
+    def test_review_mode_is_read_only(self):
+        selector = ToolSelector()
+        tools = selector.get_tools_for_mode("review")
+
+        assert "read" in tools
+        assert "search" in tools
+        assert "web_search" in tools
+        assert "task" in tools
+        assert "write" not in tools
+        assert "run" not in tools
+        assert "memory_put" not in tools

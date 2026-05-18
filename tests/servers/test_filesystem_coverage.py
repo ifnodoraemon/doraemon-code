@@ -1,9 +1,6 @@
 """Targeted coverage tests for servers.filesystem - edit_file, multi_edit, create_directory, move/copy."""
 
-import os
-import tempfile
 
-import pytest
 
 from src.servers.filesystem import (
     _apply_path_edits,
@@ -11,7 +8,6 @@ from src.servers.filesystem import (
     _create_path_directory,
     _move_path,
     _replace_path_content,
-    _write_path_content,
     multi_edit,
     write,
 )

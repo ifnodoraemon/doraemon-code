@@ -1,7 +1,6 @@
 """Tests for src/servers/database.py"""
 
 import json
-import os
 import sqlite3
 
 import pytest

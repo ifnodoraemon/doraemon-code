@@ -46,6 +46,7 @@ app = typer.Typer()
 
 _TOP_LEVEL_COMMANDS = {"start", "version"}
 _TOP_LEVEL_OPTIONS = {"--help", "--install-completion", "--show-completion"}
+_AGENT_MODES = {"plan", "review", "build"}
 
 
 def _argv_with_default_start(argv: list[str]) -> list[str]:
@@ -144,6 +145,50 @@ def _parse_resume_args(args: list[str]) -> tuple[str, int] | None:
     return run_id, max_workers
 
 
+def _parse_review_args(args: list[str]) -> tuple[str, str] | None:
+    """Parse `/review` args into base ref and scope text."""
+    base_ref = "HEAD"
+    scope: list[str] = []
+    i = 0
+
+    while i < len(args):
+        token = args[i]
+        if token in {"--base", "-b"}:
+            if i + 1 >= len(args):
+                return None
+            base_ref = args[i + 1]
+            i += 2
+            continue
+        if token.startswith("--base="):
+            base_ref = token.split("=", 1)[1]
+            if not base_ref:
+                return None
+            i += 1
+            continue
+        if token.startswith("-"):
+            return None
+        scope.append(token)
+        i += 1
+
+    scope_text = " ".join(scope).strip() or "working tree changes"
+    return base_ref, scope_text
+
+
+def _build_review_prompt(base_ref: str, scope: str) -> str:
+    """Build the read-only prompt used by the built-in `/review` command."""
+    return f"""Review the current code changes.
+
+Base reference: {base_ref}
+Scope: {scope}
+
+Instructions:
+- Review only; do not edit files.
+- Inspect the relevant diff, files, tests, and call sites. If scope is "working tree changes", compare the working tree against the base reference and consider staged, unstaged, and visible untracked files.
+- Prioritize bugs, regressions, security issues, data loss, concurrency issues, and missing tests.
+- Lead with findings ordered by severity and include concrete file/line references when possible.
+- Keep the summary brief. If there are no findings, say that clearly and mention any residual risk or unverified areas."""
+
+
 def _session_project_dir(session: Any) -> Path:
     """Return the project directory associated with a session-like object."""
     project_dir = getattr(session, "project_dir", None)
@@ -223,7 +268,10 @@ def _print_cli_help() -> None:
     console.print("""
 [bold]Commands:[/bold]
   /help, /h, /?     Show this help
-  /mode <mode>      Switch mode (plan/build)
+  /mode <mode>      Switch mode (plan/review/build)
+  /review [scope]   Review changes or paths without editing
+  /tools [all]      Show current tool policy and sandbox surface
+  /audit [limit]    Show recent tool policy/execution audit entries
   /commands         List project custom commands
   /commands help X  Show help for a custom command
   /orchestrate ...  Run lead/worker orchestration
@@ -239,8 +287,84 @@ def _print_cli_help() -> None:
 [bold]Tips:[/bold]
   Start with ! to run bash commands: !ls -la
   Create custom commands in .agent/commands/*.md
+  Example: /review --base main src/ tests/
   Example: /orchestrate --workers 3 implement auth flow
 """)
+
+
+def _print_tool_policies(session: Any, args: list[str]) -> None:
+    """Print current registry tool policies."""
+    include_hidden = bool(args and args[0] == "all")
+    if args and args[0] != "all":
+        console.print("Usage: /tools [all]")
+        return
+
+    registry = getattr(session, "registry", None)
+    if registry is None:
+        console.print("[yellow]No tool registry available[/yellow]")
+        return
+
+    mode = getattr(session, "mode", None)
+    get_policies = getattr(registry, "get_tool_policies", None)
+    get_names = getattr(registry, "get_tool_names", None)
+    get_policy = getattr(registry, "get_tool_policy", None)
+
+    if callable(get_policies):
+        policies = get_policies(mode=mode)
+    elif callable(get_names) and callable(get_policy):
+        policies = {name: get_policy(name, mode=mode) for name in get_names()}
+    else:
+        console.print("[yellow]Tool registry does not expose policy metadata[/yellow]")
+        return
+
+    visible_items = [
+        (name, policy)
+        for name, policy in sorted(policies.items())
+        if isinstance(policy, dict) and (include_hidden or policy.get("visible", True))
+    ]
+    if not visible_items:
+        console.print("[yellow]No tools available[/yellow]")
+        return
+
+    console.print(f"[cyan]Tools for mode {mode or 'default'}:[/cyan]")
+    for name, policy in visible_items:
+        visible = "visible" if policy.get("visible", True) else "hidden"
+        approval = "approval" if policy.get("requires_approval") else "auto"
+        sandbox = policy.get("sandbox") or "none"
+        source = policy.get("source") or "builtin"
+        console.print(f"  {name}  {visible}  {approval}  sandbox={sandbox}  source={source}")
+
+
+def _print_tool_audit(session: Any, args: list[str]) -> None:
+    """Print recent tool audit entries."""
+    limit = 20
+    if args:
+        try:
+            limit = max(1, int(args[0]))
+        except ValueError:
+            console.print("Usage: /audit [limit]")
+            return
+
+    registry = getattr(session, "registry", None)
+    get_audit_log = getattr(registry, "get_audit_log", None)
+    if registry is None or not callable(get_audit_log):
+        console.print("[yellow]No tool audit log available[/yellow]")
+        return
+
+    entries = get_audit_log(limit)
+    if not entries:
+        console.print("[yellow]No tool audit entries[/yellow]")
+        return
+
+    console.print("[cyan]Recent tool audit:[/cyan]")
+    for entry in entries:
+        allowed = "allow" if entry.get("allowed", True) else "deny"
+        mode = entry.get("mode") or "-"
+        tool = entry.get("tool_name") or "?"
+        action = entry.get("action") or "?"
+        sandbox = entry.get("sandbox") or "-"
+        error = f"  error={entry['error']}" if entry.get("error") else ""
+        console.print(f"  {allowed}  {mode}  {tool}  {action}  sandbox={sandbox}{error}")
 
 
 def _print_custom_commands(project_dir: Path, args: list[str]) -> None:
@@ -257,10 +381,12 @@ def _print_custom_commands(project_dir: Path, args: list[str]) -> None:
         return
 
     commands = manager.list_commands()
+    console.print("[cyan]Built-in commands:[/cyan]")
+    console.print("  /review [--base REF] [paths...]  Review changes or paths without editing")
     if not commands:
-        console.print("[yellow]No custom commands found in .agent/commands[/yellow]")
+        console.print("[yellow]No project custom commands found in .agent/commands[/yellow]")
         return
-    console.print("[cyan]Custom commands:[/cyan]")
+    console.print("[cyan]Project custom commands:[/cyan]")
     for item in commands:
         args_text = " ".join(f"${name}" for name in item.get("arguments", []))
         suffix = f" {args_text}" if args_text else ""
@@ -361,6 +487,38 @@ async def _handle_project_command(
 
     result = await manager.run_command(name, parsed_args)
     _print_command_result(result)
+    return True
+
+
+async def _run_builtin_review(args: list[str], session: Any) -> bool:
+    parsed = _parse_review_args(args)
+    if parsed is None:
+        console.print("Usage: /review [--base REF] [paths...]")
+        return True
+
+    base_ref, scope = parsed
+    previous_mode = getattr(session, "mode", None)
+    set_mode = getattr(session, "set_mode", None)
+
+    if callable(set_mode) and previous_mode != "review":
+        await set_mode("review")
+
+    try:
+        result = await session.turn(_build_review_prompt(base_ref, scope))
+    finally:
+        if callable(set_mode) and previous_mode and previous_mode != "review":
+            await set_mode(previous_mode)
+
+    if getattr(result, "response", None):
+        console.print(
+            Panel(
+                Markdown(result.response),
+                border_style="green" if getattr(result, "success", True) else "red",
+                expand=False,
+            )
+        )
+    if getattr(result, "error", None):
+        console.print(f"[red]Error: {result.error}[/red]")
     return True
 
 
@@ -567,14 +725,25 @@ async def handle_command(cmd: str, session: AgentSession) -> str | None:
     elif command in {"commands", "cmds"}:
         _print_custom_commands(_session_project_dir(session), args)
 
+    elif command == "review":
+        if await _handle_project_command(command, args, session):
+            return None
+        await _run_builtin_review(args, session)
+
+    elif command == "tools":
+        _print_tool_policies(session, args)
+
+    elif command == "audit":
+        _print_tool_audit(session, args)
+
     elif command == "mode":
-        if args and args[0] in {"plan", "build"}:
+        if args and args[0] in _AGENT_MODES:
             new_mode = args[0]
             await session.set_mode(new_mode)
             console.print(f"[green]Switched to {new_mode} mode[/green]")
         else:
             console.print(f"[yellow]Current mode: {session.mode}[/yellow]")
-            console.print("Usage: /mode plan | /mode build")
+            console.print("Usage: /mode plan | review | build")
 
     elif command == "clear":
         if session._state:
@@ -717,7 +886,7 @@ async def handle_command(cmd: str, session: AgentSession) -> str | None:
 @app.command()
 def start(
     project: str = typer.Option("default", "--project", "-p", help="Project name"),
-    mode: str = typer.Option("build", "--mode", "-m", help="Agent mode (plan/build)"),
+    mode: str = typer.Option("build", "--mode", "-m", help="Agent mode (plan/review/build)"),
     prompt: str = typer.Option(None, "--prompt", "-P", help="Initial prompt"),
     print_mode: bool = typer.Option(False, "--print", help="Print mode (non-interactive)"),
     max_turns: int = typer.Option(100, "--max-turns", help="Max turns per conversation"),
@@ -734,8 +903,8 @@ def start(
 
     headless = print_mode or bool(prompt)
 
-    if mode not in {"plan", "build"}:
-        console.print(f"[red]Invalid mode: {mode}. Use 'plan' or 'build'.[/red]")
+    if mode not in _AGENT_MODES:
+        console.print(f"[red]Invalid mode: {mode}. Use 'plan', 'review', or 'build'.[/red]")
         raise typer.Exit(1)
 
     console.print(f"[bold cyan]Doraemon Code[/bold cyan] - Mode: [bold]{mode}[/bold]")

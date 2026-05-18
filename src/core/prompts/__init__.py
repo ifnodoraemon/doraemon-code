@@ -6,12 +6,14 @@ Modular, composable prompt system for different agent modes.
 Architecture:
     _common.py  → Reusable XML prompt segments (personality, retry, etc.)
     plan.py     → Plan mode prompt (read-only analysis + structured planning)
+    review.py   → Review mode prompt (read-only code review)
     build.py    → Build mode prompt (task-driven implementation)
     __init__.py → Public API + PROMPTS dict
 """
 
 from .build import BUILD_PROMPT
 from .plan import PLAN_PROMPT
+from .review import REVIEW_PROMPT
 
 __all__ = [
     "PROMPTS",
@@ -19,12 +21,14 @@ __all__ = [
     "get_system_prompt",
     "BUILD_PROMPT",
     "PLAN_PROMPT",
+    "REVIEW_PROMPT",
 ]
 
 # ─── Registry ────────────────────────────────────────────────────────
 
 PROMPTS: dict[str, str] = {
     "plan": PLAN_PROMPT,
+    "review": REVIEW_PROMPT,
     "build": BUILD_PROMPT,
 }
 
@@ -41,7 +45,7 @@ def get_system_prompt(
     """Get the system prompt for a specific mode.
 
     Args:
-        mode: One of 'plan', 'build'. Falls back to 'build' for unknown modes.
+        mode: One of 'plan', 'review', 'build'. Falls back to 'build' for unknown modes.
         persona_config: Optional dict with 'name' key to replace the default agent name.
 
     Returns:

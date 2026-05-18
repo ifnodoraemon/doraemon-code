@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.servers.run import (
     DEFAULT_LIMITS,
     ResourceLimits,
@@ -283,7 +281,6 @@ class TestRunShellSuccess:
 
 class TestRunPythonExitCode137:
     def test_memory_exceeded(self, monkeypatch):
-        import subprocess
 
         def mock_run(*a, **kw):
             return MagicMock(returncode=137, stdout="", stderr="")

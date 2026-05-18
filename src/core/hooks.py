@@ -497,8 +497,8 @@ class HookManager:
             if transport is not None:
                 try:
                     transport.close()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Failed to close hook transport: %s", exc)
 
     def _aggregate_results(self, results: list) -> HookResult:
         """Aggregate multiple hook results."""

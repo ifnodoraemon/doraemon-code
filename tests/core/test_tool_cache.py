@@ -2,7 +2,7 @@
 
 import time
 
-from src.core.tool_cache import ToolCache, should_cache_tool, READ_ONLY_TOOLS
+from src.core.tool_cache import READ_ONLY_TOOLS, ToolCache, should_cache_tool
 
 
 class TestToolCache:

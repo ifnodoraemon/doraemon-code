@@ -5,7 +5,6 @@ Comprehensive tests for AgentState: message management, tool tracking,
 token estimation, compression, checkpoints, serialization.
 """
 
-import pytest
 
 from src.agent.state import AgentState
 from src.agent.types import Message, ToolCall

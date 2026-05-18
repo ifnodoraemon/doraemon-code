@@ -25,6 +25,7 @@ class TestToolConstants:
 
     def test_mode_capability_groups_defined(self):
         assert MODE_CAPABILITY_GROUPS["plan"] == ["read", "memory", "research", "task"]
+        assert MODE_CAPABILITY_GROUPS["review"] == ["read", "research", "task"]
         assert MODE_CAPABILITY_GROUPS["build"] == ["read", "edit", "memory", "research", "task"]
 
 
@@ -40,6 +41,16 @@ class TestToolSelectorExtended:
         build_tools = selector.get_tools_for_mode("build")
         for tool_name in CAPABILITY_GROUPS["edit"]:
             assert tool_name in build_tools
+
+    def test_review_mode_excludes_write_and_memory_mutation_tools(self):
+        selector = ToolSelector()
+        review_tools = selector.get_tools_for_mode("review")
+        assert "write" not in review_tools
+        assert "run" not in review_tools
+        assert "memory_put" not in review_tools
+        assert "read" in review_tools
+        assert "search" in review_tools
+        assert "web_fetch" in review_tools
 
     def test_both_modes_include_read_tools(self):
         selector = ToolSelector()
@@ -91,3 +102,7 @@ class TestGlobalFunctions:
     def test_get_capability_groups_for_mode_convenience(self):
         groups = get_capability_groups_for_mode("plan")
         assert groups == ["read", "memory", "research", "task"]
+
+    def test_get_review_capability_groups(self):
+        groups = get_capability_groups_for_mode("review")
+        assert groups == ["read", "research", "task"]

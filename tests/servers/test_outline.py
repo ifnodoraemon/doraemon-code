@@ -1,6 +1,5 @@
 """Tests for servers._services.outline — file structure outline parsing."""
 
-import pytest
 
 from src.servers._services.outline import _parse_javascript, _parse_python, parse_outline
 

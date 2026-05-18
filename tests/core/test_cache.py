@@ -1,9 +1,6 @@
 import json
 import time
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from src.core.cache import CacheConfig, CacheEntry, ToolCache, get_tool_cache
 
@@ -232,7 +229,6 @@ class TestToolCache:
         cache = ToolCache()
         cache.set("file_read", {"path": "/a"}, "content", ttl=999)
         key = cache._make_key("file_read", {"path": "/a"})
-        now = time.time()
         entry = cache._cache[key]
         assert abs(entry.expires_at - (entry.created_at + 999)) < 1
 

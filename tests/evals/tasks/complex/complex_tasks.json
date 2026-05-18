@@ -1,50 +1,5 @@
 [
   {
-    "id": "complex-refactor-001",
-    "category": "cross_file_refactoring",
-    "difficulty": 8,
-    "name": "Extract Shared Authentication Module",
-    "prompt": "The authentication logic is duplicated across `src/webui/routes/auth.py`, `src/gateway/middleware.py`, and `src/host/cli/auth.py`. Extract the common authentication logic into a new `src/core/auth/` module with:\n1. `authenticator.py` - Core authentication logic\n2. `token_manager.py` - JWT token handling\n3. `session_store.py` - Session management\n\nUpdate all three original files to use the new module. Ensure:\n- All existing tests pass\n- No code duplication remains\n- Backward compatibility is maintained\n- Add unit tests for the new module with >90% coverage",
-    "expected_steps": 12,
-    "timeout": 900,
-    "assertions": [
-      {"type": "file_exists", "path": "src/core/auth/__init__.py"},
-      {"type": "file_exists", "path": "src/core/auth/authenticator.py"},
-      {"type": "file_exists", "path": "src/core/auth/token_manager.py"},
-      {"type": "file_exists", "path": "src/core/auth/session_store.py"},
-      {"type": "file_contains", "path": "src/webui/routes/auth.py", "pattern": "from src.core.auth"},
-      {"type": "file_contains", "path": "src/gateway/middleware.py", "pattern": "from src.core.auth"},
-      {"type": "file_contains", "path": "src/host/cli/auth.py", "pattern": "from src.core.auth"},
-      {"type": "no_duplication", "pattern": "verify_token|authenticate_user", "max_occurrences": 1},
-      {"type": "tests_pass", "suite": "tests/"},
-      {"type": "coverage", "path": "src/core/auth/", "min_coverage": 90},
-      {"type": "file_exists", "path": "tests/test_auth_module.py"}
-    ],
-    "rubric": {
-      "architecture": {
-        "weight": 0.3,
-        "criteria": "Clean separation of concerns, proper module boundaries"
-      },
-      "code_quality": {
-        "weight": 0.25,
-        "criteria": "No duplication, clear interfaces, proper abstractions"
-      },
-      "backward_compatibility": {
-        "weight": 0.2,
-        "criteria": "All existing functionality preserved, no breaking changes"
-      },
-      "test_coverage": {
-        "weight": 0.15,
-        "criteria": "Comprehensive tests for new module"
-      },
-      "documentation": {
-        "weight": 0.1,
-        "criteria": "Clear docstrings and module documentation"
-      }
-    },
-    "reference_solution": "1. Analyze common patterns in all three files\n2. Design unified interface for Authenticator class\n3. Create token_manager with encode/decode/verify methods\n4. Create session_store with get/set/delete methods\n5. Create authenticator that uses both\n6. Update imports in all three files\n7. Run tests and fix any issues\n8. Add new tests for the module"
-  },
-  {
     "id": "complex-api-001",
     "category": "api_design_implementation",
     "difficulty": 9,

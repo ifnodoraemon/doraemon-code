@@ -88,6 +88,7 @@ def _run_command(
             capture_output=True,
             text=True,
             timeout=timeout,
+            check=False,
         )
         return result.returncode, result.stdout, result.stderr
 
@@ -102,7 +103,7 @@ def _run_command(
 def _check_tool_installed(tool: str) -> bool:
     """Check if a tool is installed and available."""
     try:
-        subprocess.run([tool, "--version"], capture_output=True, timeout=5)
+        subprocess.run([tool, "--version"], capture_output=True, timeout=5, check=False)
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -622,4 +623,3 @@ def lint(
         return _lint_summary(path)
 
     return f"Error: Unknown operation '{operation}'"
-

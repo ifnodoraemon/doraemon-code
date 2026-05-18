@@ -113,7 +113,7 @@ class SkillMetadata:
     priority: int = 0  # Higher = more important
     requires: list[str] = field(default_factory=list)  # Other skills this depends on
     files: list[str] = field(default_factory=list)  # Additional files to load
-    mode: list[str] = field(default_factory=list)  # plan/build applicability
+    mode: list[str] = field(default_factory=list)  # plan/review/build applicability
     tools: list[str] = field(default_factory=list)  # preferred tools for this skill
     constraints: list[str] = field(default_factory=list)  # execution constraints
 

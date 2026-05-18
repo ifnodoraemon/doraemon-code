@@ -17,6 +17,7 @@ Features:
 
 import json
 import logging
+import re
 import shutil
 import subprocess
 import time
@@ -27,6 +28,9 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{4,40}$")
 
 
 class PluginScope(Enum):
@@ -379,6 +383,13 @@ class PluginManager:
         self, repo: str, target_base: Path, sha: str | None, force: bool
     ) -> InstalledPlugin | None:
         """Install plugin from GitHub."""
+        if not GITHUB_REPO_RE.fullmatch(repo):
+            logger.error("Invalid GitHub plugin source: %s", repo)
+            return None
+        if sha and not GIT_SHA_RE.fullmatch(sha):
+            logger.error("Invalid Git SHA for plugin source %s: %s", repo, sha)
+            return None
+
         # Clone repo
         url = f"https://github.com/{repo}.git"
 
@@ -395,7 +406,7 @@ class PluginManager:
                     cmd = ["git", "clone"]
                 cmd.extend([url, str(tmp_path)])
 
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
                     logger.error("Git clone failed: %s", result.stderr)
                     return None
@@ -407,6 +418,7 @@ class PluginManager:
                         cwd=tmp_path,
                         capture_output=True,
                         text=True,
+                        check=False,
                     )
                     if result.returncode != 0:
                         logger.error("Git checkout failed: %s", result.stderr)
@@ -424,6 +436,7 @@ class PluginManager:
                             cwd=tmp_path,
                             capture_output=True,
                             text=True,
+                            check=False,
                         )
                         head_sha = result.stdout.strip() if result.returncode == 0 else None
                         if head_sha:

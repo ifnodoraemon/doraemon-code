@@ -1283,6 +1283,31 @@ class TestAgentAdapter:
         assert "run" in {tool.name for tool in session._agent.tools}
 
     @pytest.mark.asyncio
+    async def test_agent_session_review_mode_uses_read_only_registry(self, mock_llm, tmp_path):
+        """Review mode should expose review tools without write, run, or memory mutation."""
+        from src.agent.adapter import AgentSession
+
+        config_path = tmp_path / "config.json"
+        config_path.write_text("{}", encoding="utf-8")
+
+        session = AgentSession(
+            model_client=mock_llm,
+            registry=None,
+            mode="review",
+            project_dir=tmp_path,
+            config_path=config_path,
+            enable_trace=False,
+        )
+
+        await session.initialize()
+
+        tool_names = set(session.registry.get_tool_names())
+        assert {"read", "search", "ask_user", "web_search", "web_fetch", "task"} <= tool_names
+        assert "write" not in tool_names
+        assert "run" not in tool_names
+        assert "memory_put" not in tool_names
+
+    @pytest.mark.asyncio
     async def test_agent_session_persists_and_restores_messages(
         self, mock_llm, mock_registry, tmp_path
     ):

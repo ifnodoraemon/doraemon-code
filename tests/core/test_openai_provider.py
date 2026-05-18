@@ -1,11 +1,10 @@
 """Tests for src.core.llm.providers.openai — OpenAIAdapter."""
 
-import json
 from unittest.mock import MagicMock
 
 import pytest
 
-from src.core.llm.model_utils import ChatResponse, ToolDefinition
+from src.core.llm.model_utils import ToolDefinition
 from src.core.llm.providers.openai import (
     OpenAIAdapter,
     build_openai_content_parts,

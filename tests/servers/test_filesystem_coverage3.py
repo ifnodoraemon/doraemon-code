@@ -3,19 +3,13 @@
 import json
 import os
 
-import pytest
-
 from src.servers.filesystem import (
     _apply_path_edits,
-    _copy_path,
     _list_path_entries,
     _list_path_tree,
-    _read_path_content,
     _replace_path_content,
-    _write_path_content,
     glob_files,
     grep_search,
-    multi_edit,
     notebook_edit,
     notebook_read,
     read,
@@ -105,8 +99,6 @@ class TestGlobFilesSecurityAndErrors:
         monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path))
         import glob as glob_module
 
-        original_glob = glob_module.glob
-
         def bad_glob(pattern, **kw):
             raise RuntimeError("unexpected")
 
@@ -162,8 +154,6 @@ class TestGrepSearchEdge:
         monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path))
         import re as re_module
 
-        original_compile = re_module.compile
-
         def bad_compile(*a, **kw):
             raise RuntimeError("regex fail")
 
@@ -176,10 +166,6 @@ class TestReplacePathContentValidation:
     def test_validation_error(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path))
-        from src.core.security.security import validate_path
-
-        original = validate_path
-
         def bad_validate(p):
             raise PermissionError("forbidden")
 
@@ -214,8 +200,6 @@ class TestReadInvalidModeException:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path))
         import src.servers.filesystem as fs_mod
-        original = fs_mod._read_path_content
-
         def boom(*a, **kw):
             raise RuntimeError("unexpected")
 

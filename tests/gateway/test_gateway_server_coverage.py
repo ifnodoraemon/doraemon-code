@@ -1,7 +1,6 @@
 """Targeted coverage tests for gateway.server."""
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -11,8 +10,9 @@ from src.gateway.schema import ChatMessage, ChatResponse, ToolCall, Usage
 class TestAnthropicMessagesRoute:
     @pytest.mark.asyncio
     async def test_anthropic_messages_unauthenticated(self):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         with patch("src.gateway.server.GATEWAY_API_KEY", "secret"):
             client = TestClient(app, raise_server_exceptions=False)
@@ -26,8 +26,9 @@ class TestAnthropicMessagesRoute:
 class TestProvidersRoute:
     @pytest.mark.asyncio
     async def test_providers_unauthenticated(self):
-        from src.gateway.server import app
         from fastapi.testclient import TestClient
+
+        from src.gateway.server import app
 
         with patch("src.gateway.server.GATEWAY_API_KEY", "secret"):
             client = TestClient(app, raise_server_exceptions=False)
@@ -38,7 +39,7 @@ class TestProvidersRoute:
 class TestStreamAnthropicResponseContentBlock:
     @pytest.mark.asyncio
     async def test_stream_anthropic_with_content_and_tools(self):
-        from src.gateway.server import stream_anthropic_response, ChatRequest
+        from src.gateway.server import ChatRequest, stream_anthropic_response
 
         class FakeStreamChunk:
             def __init__(self, **kw):
@@ -70,7 +71,7 @@ class TestStreamAnthropicResponseContentBlock:
 class TestStreamResponseNormal:
     @pytest.mark.asyncio
     async def test_stream_normal_chunk(self):
-        from src.gateway.server import stream_response, ChatRequest
+        from src.gateway.server import ChatRequest, stream_response
 
         class FakeChunk:
             def to_dict(self):

@@ -441,8 +441,8 @@ class ToolHistoryManager:
             for entry_data in data.get("entries", []):
                 try:
                     self._entries.append(ToolExecution.from_dict(entry_data))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Skipping invalid history entry: %s", exc)
             logger.info("Loaded %s history entries", len(self._entries))
         except Exception as e:
             logger.warning("Failed to load history: %s", e)

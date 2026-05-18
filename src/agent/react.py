@@ -76,6 +76,19 @@ class ReActAgent(BaseAgent):
     - Tools return facts, not suggestions for next actions
     """
 
+    SEQUENTIAL_TOOL_NAMES = {
+        "write",
+        "edit",
+        "multi_edit",
+        "notebook_edit",
+        "lsp_rename",
+        "memory_put",
+        "memory_delete",
+        "db_write_query",
+        "run",
+        "ask_user",
+    }
+
     def __init__(
         self,
         llm_client: Any,
@@ -372,7 +385,9 @@ class ReActAgent(BaseAgent):
         race conditions and state inconsistency.
         """
         has_modifier = any(
-            (tc.get("name") or tc.get("function", {}).get("name", "")) in ("write", "edit")
+            self._requires_sequential_tool_execution(
+                tc.get("name") or tc.get("function", {}).get("name", "")
+            )
             for tc in tool_calls
         )
 
@@ -706,6 +721,12 @@ class ReActAgent(BaseAgent):
 Do not execute anything; inspect the codebase and return an actionable plan grounded in repository state.
 Once you have a plan, respond with "PLAN:" followed by the steps."""
 
+        if self.state.mode == "review":
+            return """You are a senior code reviewer. Inspect the requested changes or files and report only actionable findings.
+Use read-only tools to inspect diffs, files, and relevant call sites. Do not modify files and do not execute commands.
+Lead with findings ordered by severity, include file/line references when possible, and call out missing tests or residual risk.
+If you find no issues, say so clearly."""
+
         return """You are a coding agent. Complete the given task using available tools.
 Inspect context before changing code, choose actions based on what you observe, and validate results when possible.
 When the task is complete, provide a summary of what was done."""
@@ -732,7 +753,9 @@ When the task is complete, provide a summary of what was done."""
         If any tool is a write/edit tool, fall back to sequential execution
         to prevent concurrent file modifications.
         """
-        has_modifier = any(name == "write" or name == "edit" for _, name, _ in tool_call_infos)
+        has_modifier = any(
+            self._requires_sequential_tool_execution(name) for _, name, _ in tool_call_infos
+        )
 
         if has_modifier:
             logger.info("Modifying tool detected in stream. Switching to sequential execution for safety.")
@@ -745,6 +768,10 @@ When the task is complete, provide a summary of what was done."""
         return await asyncio.gather(
             *(self._execute_tool_with_permission(name, args) for _, name, args in tool_call_infos)
         )
+
+    def _requires_sequential_tool_execution(self, name: str) -> bool:
+        """Return True for tools that should never run concurrently."""
+        return name in self.SEQUENTIAL_TOOL_NAMES or self.is_sensitive_tool(name)
 
     async def _compress_context(self) -> None:
         """Perform semantic compression of the conversation history using the LLM."""

@@ -1,18 +1,14 @@
 """Targeted coverage for servers/lsp.py uncovered lines: 138-161,188-216,414-415,472,570-571."""
 
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.servers.lsp import (
-    CompletionItem,
     PylspClient,
     _validate_py_file,
-    lsp_completions,
     lsp_definition,
     lsp_diagnostics,
-    lsp_hover,
     lsp_references,
     lsp_rename,
 )
