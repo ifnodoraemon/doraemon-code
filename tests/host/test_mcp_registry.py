@@ -132,6 +132,7 @@ def test_get_enabled_mcp_servers_from_config(tmp_path):
                         "transport": "streamable_http",
                         "url": "https://mcp.example.test",
                         "tool_prefix": "docs",
+                        "require_approval": False,
                     }
                 ],
             }
@@ -144,6 +145,7 @@ def test_get_enabled_mcp_servers_from_config(tmp_path):
     assert servers[0].name == "docs"
     assert servers[0].url == "https://mcp.example.test"
     assert servers[0].tool_prefix == "docs"
+    assert servers[0].require_approval is False
 
 
 @pytest.mark.asyncio

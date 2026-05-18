@@ -32,6 +32,15 @@ class TestMCPServerConfig:
     def test_valid_streamable_http(self):
         cfg = MCPServerConfig(name="test", url="http://localhost:8080")
         assert cfg.transport == "streamable_http"
+        assert cfg.require_approval is True
+
+    def test_mcp_server_can_disable_approval(self):
+        cfg = MCPServerConfig(
+            name="test",
+            url="http://localhost:8080",
+            require_approval=False,
+        )
+        assert cfg.require_approval is False
 
     def test_valid_stdio(self):
         cfg = MCPServerConfig(name="test", transport="stdio", command="npx")

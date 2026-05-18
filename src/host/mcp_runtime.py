@@ -9,6 +9,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -35,6 +36,7 @@ class RemoteMCPServerConfig:
     headers: dict[str, str] = field(default_factory=dict)
     timeout_seconds: float = 30.0
     tool_prefix: str | None = None
+    require_approval: bool = True
     enabled: bool = True
 
 
@@ -58,6 +60,7 @@ class StreamableHttpMCPClient:
     ):
         if server.transport != "streamable_http":
             raise ValueError(f"Unsupported MCP transport: {server.transport}")
+        _validate_streamable_http_url(server)
 
         self.server = server
         self.transport = transport
@@ -143,11 +146,17 @@ class StreamableHttpMCPClient:
                         self._session_id = session_id
                     content_type = response.headers.get("content-type", "").lower()
                     if content_type.startswith("text/event-stream"):
-                        return await self._parse_sse_response(response)
+                        return _checked_json_rpc_response(
+                            await self._parse_sse_response(response),
+                            self.server.name,
+                        )
                     body = await response.aread()
                     if not body.strip():
                         return {}
-                    return json.loads(body.decode("utf-8"))
+                    return _checked_json_rpc_response(
+                        json.loads(body.decode("utf-8")),
+                        self.server.name,
+                    )
             except (httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_error = exc
                 if self._client is not None:
@@ -368,7 +377,17 @@ class StdioMCPClient:
             await process.stdin.drain()
             if not expect_response:
                 return None
-            return await self._read_response(payload["id"])
+            try:
+                response = await asyncio.wait_for(
+                    self._read_response(payload["id"]),
+                    timeout=self.server.timeout_seconds,
+                )
+            except TimeoutError as exc:
+                raise TimeoutError(
+                    f"MCP stdio server '{self.server.name}' timed out waiting for "
+                    f"response to {payload.get('method')}"
+                ) from exc
+            return _checked_json_rpc_response(response, self.server.name)
 
     async def initialize(self) -> None:
         if self._initialized:
@@ -483,6 +502,34 @@ def _resolved_tool_name(server: RemoteMCPServerConfig, tool_name: str) -> str:
     return tool_name
 
 
+def _validate_streamable_http_url(server: RemoteMCPServerConfig) -> None:
+    if not server.url:
+        raise ValueError("streamable_http MCP server requires url")
+    parsed = urlparse(server.url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(
+            "streamable_http MCP server url must be an absolute http(s) URL"
+        )
+    if parsed.username or parsed.password:
+        raise ValueError("streamable_http MCP server url must not contain credentials")
+
+
+def _checked_json_rpc_response(response: dict[str, Any], server_name: str) -> dict[str, Any]:
+    if not isinstance(response, dict):
+        raise RuntimeError(
+            f"MCP server '{server_name}' returned invalid JSON-RPC response"
+        )
+    error = response.get("error")
+    if not error:
+        return response
+
+    if isinstance(error, dict):
+        code = error.get("code", "unknown")
+        message = error.get("message", "unknown error")
+        raise RuntimeError(f"MCP server '{server_name}' JSON-RPC error {code}: {message}")
+    raise RuntimeError(f"MCP server '{server_name}' JSON-RPC error: {error}")
+
+
 def _server_cache_key(server: RemoteMCPServerConfig) -> str:
     return f"{server.transport}:{server.name}:{server.url or server.command or ''}"
 
@@ -593,7 +640,7 @@ async def build_remote_mcp_registry(
                 description=remote_tool.description,
                 function=_call_remote_tool,
                 parameters=remote_tool.input_schema,
-                sensitive=False,
+                sensitive=server.require_approval,
                 timeout=server.timeout_seconds,
                 source="mcp_remote",
                 metadata={

@@ -107,6 +107,41 @@ async def test_streamable_http_mcp_client_lists_and_calls_tools():
     assert result == "pong"
 
 
+def test_streamable_http_mcp_client_rejects_url_credentials():
+    server = RemoteMCPServerConfig(
+        name="mock",
+        transport="streamable_http",
+        url="https://token@mcp.example.test",
+    )
+
+    with pytest.raises(ValueError, match="must not contain credentials"):
+        StreamableHttpMCPClient(server)
+
+
+@pytest.mark.asyncio
+async def test_streamable_http_mcp_client_raises_json_rpc_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": payload["id"],
+                "error": {"code": -32601, "message": "method not found"},
+            },
+        )
+
+    server = RemoteMCPServerConfig(
+        name="mock-error",
+        transport="streamable_http",
+        url="https://mcp.example.test",
+    )
+    client = StreamableHttpMCPClient(server, transport=httpx.MockTransport(handler))
+
+    with pytest.raises(RuntimeError, match="JSON-RPC error -32601"):
+        await client.list_tools()
+
+
 @pytest.mark.asyncio
 async def test_streamable_http_mcp_client_parses_sse_payload():
     def handler(request: httpx.Request) -> httpx.Response:
@@ -283,8 +318,31 @@ async def test_build_remote_mcp_registry_uses_prefix():
     assert active == ["mock"]
     assert len(clients) == 1
     assert "docs_remote_echo" in registry.get_tool_names()
+    assert registry.is_sensitive("docs_remote_echo") is True
     result = await registry.call_tool("docs_remote_echo", {"text": "pong"})
     assert result == "pong"
+
+
+@pytest.mark.asyncio
+async def test_build_remote_mcp_registry_can_mark_server_tools_non_sensitive():
+    server = RemoteMCPServerConfig(
+        name="mock",
+        transport="streamable_http",
+        url="https://mcp.example.test",
+        tool_prefix="docs",
+        require_approval=False,
+    )
+
+    registry, _active, clients = await build_remote_mcp_registry(
+        [server],
+        transport_factory=lambda _server: _mock_mcp_transport(),
+    )
+
+    try:
+        assert registry.is_sensitive("docs_remote_echo") is False
+    finally:
+        for client in clients:
+            await client.close()
 
 
 @pytest.mark.asyncio
@@ -455,5 +513,51 @@ for line in sys.stdin:
 
         result = await client.call_tool("echo", {"text": "pong"})
         assert result == "pong"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_stdio_mcp_client_times_out_waiting_for_response(tmp_path):
+    script = tmp_path / "mock_stdio_hang.py"
+    script.write_text(
+        """
+import json
+import time
+import sys
+
+for line in sys.stdin:
+    payload = json.loads(line)
+    method = payload.get("method")
+    if method == "initialize":
+        print(json.dumps({
+            "jsonrpc": "2.0",
+            "id": payload["id"],
+            "result": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "stdio-hang", "version": "1.0.0"},
+            },
+        }), flush=True)
+    elif method == "notifications/initialized":
+        continue
+    elif method == "tools/list":
+        time.sleep(60)
+""",
+        encoding="utf-8",
+    )
+
+    server = RemoteMCPServerConfig(
+        name="stdio-hang",
+        transport="stdio",
+        command=sys.executable,
+        args=["-u", str(script)],
+        timeout_seconds=0.1,
+    )
+    client = StdioMCPClient(server)
+
+    try:
+        with pytest.raises(TimeoutError, match="timed out waiting"):
+            await client.list_tools()
     finally:
         await client.close()

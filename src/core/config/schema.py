@@ -40,6 +40,10 @@ class MCPServerConfig(BaseModel):
         default=None,
         description="Optional prefix added to all tools from this MCP server",
     )
+    require_approval: bool = Field(
+        default=True,
+        description="Whether tools from this MCP server require approval before execution",
+    )
     enabled: bool = Field(default=True, description="Whether this server is enabled")
 
     @field_validator("name", "transport")

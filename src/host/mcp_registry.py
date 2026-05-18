@@ -93,6 +93,7 @@ def get_enabled_mcp_servers(config_path: Path | None = None) -> list[RemoteMCPSe
                 headers=parsed.headers,
                 timeout_seconds=parsed.timeout_seconds,
                 tool_prefix=parsed.tool_prefix,
+                require_approval=parsed.require_approval,
                 enabled=parsed.enabled,
             )
         )
