@@ -14,6 +14,7 @@ import logging
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,7 @@ from src.core.security.shell_security import (
     check_git_safety,
     is_command_blocked,
     register_background_process,
+    truncate_output,
 )
 
 configure_root_logger()
@@ -205,6 +207,26 @@ _check_git_safety = check_git_safety
 _register_background_process = register_background_process
 
 
+def _terminate_process(process: subprocess.Popen) -> None:
+    """Terminate a process tree when possible, falling back to the process."""
+    try:
+        if platform.system() != "Windows" and process.pid:
+            os.killpg(process.pid, signal.SIGTERM)
+            time.sleep(0.2)
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+            return
+    except (OSError, ProcessLookupError):
+        return
+    except Exception as exc:
+        logger.debug("Process group termination failed, falling back to kill: %s", exc)
+
+    try:
+        process.kill()
+    except Exception as exc:
+        logger.debug("Process kill failed: %s", exc)
+
+
 def run(
     command: str,
     mode: Literal["shell", "python", "background", "install"] = "shell",
@@ -258,6 +280,7 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
             text=True,
             bufsize=1,
             universal_newlines=True,
+            start_new_session=platform.system() != "Windows",
         )
 
         output_queue: queue.Queue = queue.Queue()
@@ -303,14 +326,14 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
                 break
 
             if time.time() - last_activity_time > timeout:
-                process.kill()
+                _terminate_process(process)
                 logger.warning("Command timed out: %s", command)
                 return (
-                    "".join(output_lines)
+                    truncate_output("".join(output_lines))
                     + f"\n\nError: Command timed out. No output for {timeout} seconds."
                 )
 
-        output = "".join(output_lines)
+        output = truncate_output("".join(output_lines))
         if return_code != 0:
             output += f"\n\n[Exit code: {return_code}]"
 
@@ -418,20 +441,37 @@ def _run_background(command: str, working_dir: str | None) -> str:
         return f"Error: Invalid working directory: {e}"
 
     try:
+        log_file = tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix="doraemon_bg_",
+            suffix=".log",
+            delete=False,
+        )
         proc = subprocess.Popen(
             [DEFAULT_SHELL_CONFIG.shell, "-c", command],
             shell=False,
             cwd=resolved_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+        log_file.close()
 
-        pid = _register_background_process(proc, command, resolved_dir)
+        pid = _register_background_process(proc, command, resolved_dir, log_file.name)
 
-        return f"Started background process with PID: {pid}\nCommand: {command}"
+        return (
+            f"Started background process with PID: {pid}\n"
+            f"Command: {command}\n"
+            f"Log: {log_file.name}"
+        )
 
     except Exception as e:
+        if "log_file" in locals():
+            try:
+                log_file.close()
+                os.unlink(log_file.name)
+            except Exception as exc:
+                logger.debug("Failed to clean background log file: %s", exc)
         logger.error("Failed to start background command: %s", e)
         return f"Error starting background process: {str(e)}"
 

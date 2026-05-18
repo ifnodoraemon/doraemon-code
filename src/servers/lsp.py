@@ -71,10 +71,11 @@ class PylspClient:
     Uses subprocess and stdio to communicate with pylsp.
     """
 
-    def __init__(self):
+    def __init__(self, request_timeout: float = 10.0):
         self._process: subprocess.Popen | None = None
         self._request_id = 0
         self._initialized = False
+        self.request_timeout = request_timeout
 
     async def start(self) -> bool:
         """Start the pylsp server."""
@@ -158,7 +159,15 @@ class PylspClient:
                 logger.error("LSP request failed: %s", e)
             return None
 
-        return await loop.run_in_executor(None, _do_io)
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _do_io),
+                timeout=self.request_timeout,
+            )
+        except TimeoutError:
+            logger.warning("LSP request timed out: %s", method)
+            self.stop()
+            return None
 
     async def _send_notification(self, method: str, params: dict):
         """Send an LSP notification (no response expected)."""
@@ -340,6 +349,13 @@ class PylspClient:
         """Stop the pylsp server."""
         if self._process:
             self._process.terminate()
+            try:
+                self._process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+                self._process.wait(timeout=2)
+            except Exception as exc:
+                logger.debug("Failed to wait for pylsp shutdown: %s", exc)
             self._process = None
             self._initialized = False
 
@@ -418,6 +434,16 @@ def _validate_py_file(path: str) -> tuple[str, str | None]:
     if not valid.endswith(".py"):
         return "", f"Error: Only .py files supported, got {os.path.splitext(valid)[1]}"
     return valid, None
+
+
+def _validate_symbol_name(name: str, field_name: str) -> str | None:
+    """Return an error if a Python symbol name is invalid."""
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
+        return (
+            f"Error: Invalid {field_name} '{name}'. Only alphanumeric characters "
+            "and underscores are allowed (must start with letter or underscore)."
+        )
+    return None
 
 
 async def _require_lsp() -> tuple[PylspClient | None, str | None]:
@@ -529,8 +555,10 @@ async def lsp_rename(
     if not os.path.exists(valid_path):
         return f"Error: Path not found: {path}"
 
-    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", new_name):
-        return f"Error: Invalid new_name '{new_name}'. Only alphanumeric characters and underscores are allowed (must start with letter or underscore)."
+    if err := _validate_symbol_name(old_name, "old_name"):
+        return err
+    if err := _validate_symbol_name(new_name, "new_name"):
+        return err
 
     try:
         # Find affected files

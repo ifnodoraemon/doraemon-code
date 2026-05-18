@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -130,6 +131,23 @@ class TestPylspClientSendRequest:
         client._process.stdin = None
         result = await client._send_request("initialize", {})
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_send_request_times_out_and_stops_client(self):
+        client = PylspClient(request_timeout=0.01)
+        mock_proc = MagicMock()
+        mock_proc.stdin = MagicMock()
+        mock_proc.stdout.readline.side_effect = lambda: (time.sleep(0.05) or "\r\n")
+        mock_proc.stdout.read.return_value = b""
+        client._process = mock_proc
+        client._initialized = True
+
+        result = await client._send_request("initialize", {})
+
+        assert result is None
+        mock_proc.terminate.assert_called_once()
+        assert client._process is None
+        assert client._initialized is False
 
 
 class TestPylspClientSendNotification:
@@ -590,6 +608,16 @@ class TestLspRename:
         with patch("src.servers.lsp.validate_path", return_value=str(py_file)):
             result = await lsp_rename(str(py_file), "nonexistent", "new_name", preview=False)
             assert "No occurrences" in result
+
+    @pytest.mark.asyncio
+    async def test_rename_rejects_invalid_old_name(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path))
+        py_file = tmp_path / "mod.py"
+        py_file.write_text("x = 1\n")
+        with patch("src.servers.lsp.validate_path", return_value=str(py_file)):
+            result = await lsp_rename(str(py_file), "old-name", "new_name", preview=False)
+            assert "Invalid old_name" in result
 
     @pytest.mark.asyncio
     async def test_rename_directory(self, tmp_path, monkeypatch):

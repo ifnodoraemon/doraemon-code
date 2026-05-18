@@ -33,9 +33,13 @@ class TestRunBackgroundAdditional:
         mock_proc = MagicMock()
         mock_proc.pid = 99999
         monkeypatch.setattr("src.servers.run.subprocess.Popen", lambda *a, **kw: mock_proc)
-        monkeypatch.setattr("src.servers.run._register_background_process", lambda p, c, d: 99999)
+        monkeypatch.setattr(
+            "src.servers.run._register_background_process",
+            lambda p, c, d, log_file=None: 99999,
+        )
         result = _run_background("sleep 1", str(tmp_path))
         assert "99999" in result
+        assert "Log:" in result
 
     def test_background_exception(self, monkeypatch, tmp_path):
         monkeypatch.setattr("src.servers.run._is_command_blocked", lambda c: False)

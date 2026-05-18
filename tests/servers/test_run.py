@@ -42,8 +42,8 @@ class _FakeProcess:
         self.done = True
 
 
-def test_run_shell_does_not_truncate_output(monkeypatch, tmp_path):
-    large_output = "x" * 40000
+def test_run_shell_truncates_large_output(monkeypatch, tmp_path):
+    large_output = "x" * 120000
 
     monkeypatch.setattr("src.servers.run._is_command_blocked", lambda command: False)
     monkeypatch.setattr("src.servers.run._check_git_safety", lambda command: None)
@@ -55,8 +55,8 @@ def test_run_shell_does_not_truncate_output(monkeypatch, tmp_path):
 
     result = _run_shell("echo large", timeout=5, working_dir=str(tmp_path))
 
-    assert result == large_output
-    assert "truncated" not in result.lower()
+    assert len(result) < len(large_output)
+    assert "truncated" in result.lower()
 
 
 class TestRun:
@@ -179,9 +179,13 @@ class TestRunBackground:
         mock_proc = MagicMock()
         mock_proc.pid = 12345
         monkeypatch.setattr("src.servers.run.subprocess.Popen", lambda *a, **kw: mock_proc)
-        monkeypatch.setattr("src.servers.run._register_background_process", lambda p, c, d: 12345)
+        monkeypatch.setattr(
+            "src.servers.run._register_background_process",
+            lambda p, c, d, log_file=None: 12345,
+        )
         result = _run_background("sleep 1", str(tmp_path))
         assert "PID: 12345" in result
+        assert "Log:" in result
 
 
 class TestRunInstall:
