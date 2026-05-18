@@ -32,6 +32,7 @@
 - `headers`
 - `timeout_seconds`
 - `tool_prefix`
+- `require_approval`
 - `enabled`
 
 ## Modes
@@ -124,6 +125,9 @@ MCP 是扩展能力层，不属于默认 built-in 主链。
 - 支持网络重试
 - 支持失败冷却
 - `streamable_http` 支持 `mcp-session-id`
+- `streamable_http` URL 必须是绝对 `http(s)` URL，且不能把凭据写进 URL
+- remote MCP tools 默认需要审批；只有配置 `require_approval: false` 才会降级为非敏感工具
+- JSON-RPC `error` 会作为明确运行时错误返回，不会被当成空结果吞掉
 - trace 会记录 remote tool source
 
 ## Providers

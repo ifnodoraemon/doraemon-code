@@ -182,6 +182,7 @@ Context7：
         "CONTEXT7_API_KEY": "YOUR_CONTEXT7_API_KEY"
       },
       "tool_prefix": "context7",
+      "require_approval": true,
       "enabled": true
     }
   ]
@@ -201,13 +202,14 @@ GitHub：
         "Authorization": "Bearer YOUR_GITHUB_TOKEN"
       },
       "tool_prefix": "github",
+      "require_approval": true,
       "enabled": true
     }
   ]
 }
 ```
 
-建议总是设置 `tool_prefix`。
+建议总是设置 `tool_prefix`。远端 MCP 工具默认按敏感工具处理，需要审批；只有确认该 server 足够可信且工具无写入风险时，才设置 `"require_approval": false`。
 
 当前远端 MCP runtime 支持：
 
@@ -220,7 +222,20 @@ GitHub：
 - 重试
 - 会话复用
 - 失败冷却
+- 默认审批
+- JSON-RPC 错误显式返回
 - trace source 标记
+
+## Computer-Use Demo
+
+受控浏览器 agent 示例在 `examples/computer_use_agent`：
+
+```bash
+python -m examples.computer_use_agent run \
+  --goal "Mark this month's pending customers as followed up and export the result"
+```
+
+该示例会启动本地 CRM demo，浏览器导航限制在配置的 start URL origin，执行过程会写入 step trace、截图、下载文件和报告。
 
 ## Real Validation
 
