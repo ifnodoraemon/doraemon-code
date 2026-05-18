@@ -65,6 +65,7 @@ build/
 # Logs
 logs/
 *.log
+output/
 
 # Temporary files
 .cache/
