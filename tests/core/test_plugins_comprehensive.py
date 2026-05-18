@@ -304,6 +304,11 @@ class TestPluginDependencies:
         assert manifest.description == ""
         assert manifest.dependencies == []
 
+    def test_plugin_manifest_rejects_path_traversal_name(self):
+        """Test manifest names cannot escape plugin install directories."""
+        with pytest.raises(ValueError, match="Plugin name"):
+            PluginManifest.from_dict({"name": "../outside"})
+
     def test_installed_plugin_to_dict(self, sample_plugin_dir, sample_plugin_manifest):
         """Test converting installed plugin to dictionary."""
         plugin = InstalledPlugin(
@@ -814,6 +819,27 @@ class TestPluginStateManagement:
         monkeypatch.setattr("src.core.plugins.subprocess.run", fail_run)
         result = plugin_manager.install("owner/repo@main", scope=PluginScope.PROJECT)
         assert result is None
+
+    def test_install_local_rejects_unsafe_manifest_name(
+        self, plugin_manager, temp_project_dir
+    ):
+        plugin_dir = temp_project_dir / "unsafe-plugin"
+        plugin_dir.mkdir(parents=True)
+        (plugin_dir / "plugin.json").write_text(
+            json.dumps(
+                {
+                    "name": "../outside",
+                    "version": "1.0.0",
+                    "description": "unsafe",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = plugin_manager.install(str(plugin_dir), scope=PluginScope.PROJECT)
+
+        assert result is None
+        assert not (plugin_manager._project_dir.parent / "outside").exists()
 
     def test_command_handler_execution(self, plugin_manager, sample_plugin_dir):
         plugin_manager._load_plugin(sample_plugin_dir, PluginScope.PROJECT)

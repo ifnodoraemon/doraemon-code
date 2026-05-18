@@ -31,6 +31,18 @@ logger = logging.getLogger(__name__)
 
 GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{4,40}$")
+PLUGIN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+
+
+def _validate_plugin_name(name: str) -> str:
+    """Validate a plugin identifier before using it in filesystem paths."""
+    normalized = str(name or "").strip()
+    if not PLUGIN_NAME_RE.fullmatch(normalized):
+        raise ValueError(
+            "Plugin name must start with an alphanumeric character and contain "
+            "only letters, numbers, dots, underscores, or hyphens"
+        )
+    return normalized
 
 
 class PluginScope(Enum):
@@ -80,8 +92,9 @@ class PluginManifest:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PluginManifest":
+        name = _validate_plugin_name(data.get("name", "unknown"))
         return cls(
-            name=data.get("name", "unknown"),
+            name=name,
             version=data.get("version", "0.0.0"),
             description=data.get("description", ""),
             author=data.get("author", ""),
