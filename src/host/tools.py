@@ -713,8 +713,12 @@ BUILTIN_TOOL_SPECS: list[ToolSpec] = [
     ToolSpec("src.servers.web", "web_fetch",  sensitive=False, timeout=30.0),
     ToolSpec("src.servers.web", "web_search", sensitive=False, timeout=30.0),
 
-    # ── Task ─────────────────────────────────────────────────────────
+    # ── Task & Scheduler ─────────────────────────────────────────────
     ToolSpec("src.servers.task", "task", sensitive=False, timeout=60.0),
+    ToolSpec("src.core.scheduler_tool", "schedule_task", sensitive=True, timeout=30.0),
+    ToolSpec("src.core.scheduler_tool", "list_schedules", sensitive=False, timeout=30.0),
+    ToolSpec("src.core.scheduler_tool", "cancel_schedule", sensitive=True, timeout=30.0),
+
     ToolSpec("src.servers.lsp", "lsp_diagnostics", sensitive=False, timeout=120.0),
     ToolSpec("src.servers.lsp", "lsp_completions", sensitive=False, timeout=30.0),
     ToolSpec("src.servers.lsp", "lsp_hover",       sensitive=False, timeout=30.0),

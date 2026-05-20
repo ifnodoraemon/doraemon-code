@@ -175,6 +175,11 @@ async def create_tool_registry(
         merged._mcp_clients = remote_clients
         merged._mcp_server_errors = getattr(remote_registry, "_mcp_server_errors", {})
 
+    # Attach custom commands from .agent/commands/*.md
+    from src.core.commands_tool import get_command_tool_registry
+    cmd_registry = get_command_tool_registry()
+    cmd_registry.attach_to_registry(merged)
+
     merged._active_mcp_extensions = active_mcp_extensions
     return merged
 

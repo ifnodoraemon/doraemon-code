@@ -162,6 +162,7 @@ class TestNotificationConfig:
         assert config.default_timeout == 5
         assert config.max_history == 100
         assert config.webhook_url is None
+        assert config.allow_insecure_webhook is False
 
     def test_config_custom_values(self):
         """Test custom configuration values."""
@@ -173,6 +174,7 @@ class TestNotificationConfig:
             default_timeout=10,
             max_history=200,
             webhook_url="https://webhook.example.com",
+            allow_insecure_webhook=True,
         )
         assert config.enabled is False
         assert config.do_not_disturb is True
@@ -181,6 +183,7 @@ class TestNotificationConfig:
         assert config.default_timeout == 10
         assert config.max_history == 200
         assert config.webhook_url == "https://webhook.example.com"
+        assert config.allow_insecure_webhook is True
 
 
 class TestDesktopNotifier:
@@ -748,6 +751,24 @@ class TestDesktopNotifierSendMethods:
         result = notifier._send_windows(notif)
         assert result is True
 
+    @patch("subprocess.run")
+    @patch.object(DesktopNotifier, "_check_availability", return_value=True)
+    @patch("platform.system", return_value="Windows")
+    def test_send_windows_fallback_does_not_interpolate_user_text(
+        self,
+        mock_system,
+        mock_check,
+        mock_run,
+    ):
+        """Test Windows fallback base64-encodes toast XML before PowerShell."""
+        notifier = DesktopNotifier()
+        notif = Notification(title='"; Start-Process calc; "', message="M")
+        result = notifier._send_windows(notif)
+        assert result is True
+        script = mock_run.call_args[0][0][-1]
+        assert "FromBase64String" in script
+        assert "Start-Process calc" not in script
+
 
 class TestNotificationManagerChannels:
     """Tests for additional channel behaviors (lines 341, 364-386, 405)."""
@@ -792,6 +813,39 @@ class TestNotificationManagerChannels:
     def test_send_webhook_rejects_non_http_url(self, mock_urlopen):
         """Test webhook channel rejects non-HTTP schemes."""
         config = NotificationConfig(webhook_url="file:///tmp/webhook")
+        manager = NotificationManager(config)
+        notif = Notification(title="T", message="M")
+        result = manager._send_webhook(notif)
+        assert result is False
+        mock_urlopen.assert_not_called()
+
+    @patch("urllib.request.urlopen")
+    def test_send_webhook_rejects_http_by_default(self, mock_urlopen):
+        """Test webhook channel rejects plaintext HTTP unless explicitly allowed."""
+        config = NotificationConfig(webhook_url="http://webhook.example.com")
+        manager = NotificationManager(config)
+        notif = Notification(title="T", message="M")
+        result = manager._send_webhook(notif)
+        assert result is False
+        mock_urlopen.assert_not_called()
+
+    @patch("urllib.request.urlopen")
+    def test_send_webhook_allows_http_when_configured(self, mock_urlopen):
+        """Test webhook channel can explicitly allow plaintext HTTP."""
+        config = NotificationConfig(
+            webhook_url="http://webhook.example.com",
+            allow_insecure_webhook=True,
+        )
+        manager = NotificationManager(config)
+        notif = Notification(title="T", message="M")
+        result = manager._send_webhook(notif)
+        assert result is True
+        mock_urlopen.assert_called_once()
+
+    @patch("urllib.request.urlopen")
+    def test_send_webhook_rejects_url_credentials(self, mock_urlopen):
+        """Test webhook channel rejects credentials embedded in URL."""
+        config = NotificationConfig(webhook_url="https://token@webhook.example.com")
         manager = NotificationManager(config)
         notif = Notification(title="T", message="M")
         result = manager._send_webhook(notif)

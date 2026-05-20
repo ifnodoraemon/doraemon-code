@@ -16,9 +16,11 @@ import platform
 import shutil
 import subprocess
 import time
+from base64 import b64encode
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from html import escape as html_escape
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -83,6 +85,7 @@ class NotificationConfig:
     default_timeout: int = 5
     max_history: int = 100
     webhook_url: str | None = None
+    allow_insecure_webhook: bool = False
 
 
 class DesktopNotifier:
@@ -171,6 +174,8 @@ class DesktopNotifier:
         subprocess.run(
             ["osascript", "-e", script],
             capture_output=True,
+            timeout=5,
+            check=False,
         )
         return True
 
@@ -196,7 +201,7 @@ class DesktopNotifier:
         if notification.icon:
             cmd.extend(["--icon", notification.icon])
 
-        subprocess.run(cmd, capture_output=True)
+        subprocess.run(cmd, capture_output=True, timeout=5, check=False)
         return True
 
     def _send_windows(self, notification: Notification) -> bool:
@@ -213,12 +218,17 @@ class DesktopNotifier:
             )
             return True
         except ImportError:
-            safe_title = notification.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            safe_msg = notification.message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            xml_payload = (
+                "<toast><visual><binding template='ToastText02'>"
+                f"<text id='1'>{html_escape(notification.title, quote=True)}</text>"
+                f"<text id='2'>{html_escape(notification.message, quote=True)}</text>"
+                "</binding></visual></toast>"
+            )
+            encoded_xml = b64encode(xml_payload.encode("utf-8")).decode("ascii")
             script = f"""
             [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
             [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-            $template = "<toast><visual><binding template='ToastText02'><text id='1'>{safe_title}</text><text id='2'>{safe_msg}</text></binding></visual></toast>"
+            $template = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{encoded_xml}'))
             $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
             $xml.LoadXml($template)
             $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
@@ -228,6 +238,8 @@ class DesktopNotifier:
             subprocess.run(
                 ["powershell", "-Command", script],
                 capture_output=True,
+                timeout=5,
+                check=False,
             )
             return True
 
@@ -377,11 +389,15 @@ class NotificationManager:
                 subprocess.run(
                     ["afplay", f"/System/Library/Sounds/{sound}.aiff"],
                     capture_output=True,
+                    timeout=5,
+                    check=False,
                 )
             elif system == "Linux":
                 subprocess.run(
                     ["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"],
                     capture_output=True,
+                    timeout=5,
+                    check=False,
                 )
             elif system == "Windows":
                 import winsound
@@ -421,6 +437,12 @@ class NotificationManager:
             if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
                 logger.error("Webhook failed: invalid webhook URL")
                 return False
+            if parsed_url.username or parsed_url.password:
+                logger.error("Webhook failed: webhook URL must not contain credentials")
+                return False
+            if parsed_url.scheme == "http" and not self.config.allow_insecure_webhook:
+                logger.error("Webhook failed: insecure HTTP webhook URL is disabled")
+                return False
 
             data = notification.to_dict()
             req = urllib.request.Request(  # noqa: S310 - scheme and netloc validated above.
@@ -428,7 +450,8 @@ class NotificationManager:
                 data=_json.dumps(data).encode(),
                 headers={"Content-Type": "application/json"},
             )
-            urllib.request.urlopen(req, timeout=5)  # noqa: S310 - request URL validated above.
+            with urllib.request.urlopen(req, timeout=5):  # noqa: S310 - request URL validated above.
+                pass
             return True
         except Exception as e:
             logger.error("Webhook failed: %s", e)

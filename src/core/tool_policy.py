@@ -114,6 +114,9 @@ class ToolPolicyEngine:
             mcp_server = metadata.get("mcp_server")
             return bool(mcp_server and mcp_server in active_extensions)
 
+        if source == "custom_command":
+            return True  # Custom commands are user-defined and always visible if present
+
         return False
 
     def _visible_modes(

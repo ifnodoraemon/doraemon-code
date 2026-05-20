@@ -33,10 +33,11 @@ class TaskPlanner:
         print(plan.to_markdown())
     """
 
-    def __init__(self):
+    def __init__(self, model_client: Any | None = None):
         self._id_counter = 0
         self._analyzer = TaskAnalyzer()
         self._decomposer = TaskDecomposer(self._generate_id)
+        self.model_client = model_client
 
     def _generate_id(self, prefix: str = "task") -> str:
         """Generate a unique task ID."""
@@ -46,7 +47,7 @@ class TaskPlanner:
         ).hexdigest()[:6]
         return f"{prefix}_{hash_part}"
 
-    def generate_plan(self, goal: str, context: dict[str, Any] | None = None) -> ExecutionPlan:
+    async def generate_plan(self, goal: str, context: dict[str, Any] | None = None) -> ExecutionPlan:
         """
         Generate an execution plan for a goal.
 
@@ -59,13 +60,17 @@ class TaskPlanner:
         """
         context = context or {}
 
-        # Analyze goal complexity
+        # Analyze goal complexity (legacy, can be refined later)
         self._analyzer.estimate_complexity(goal)
 
-        # Decompose into tasks based on goal type
-        tasks = self._decompose_goal(goal, context)
+        # Decompose into tasks
+        if self.model_client:
+            tasks = await self._decomposer.decompose_via_llm(goal, context, self.model_client)
+        else:
+            # Fallback to pattern-based decomposition if no model client is available
+            tasks = self._decompose_goal(goal, context)
 
-        # Analyze dependencies
+        # Analyze dependencies (ensure consistency)
         self._analyzer.analyze_dependencies(tasks)
 
         # Assess risks
@@ -77,7 +82,7 @@ class TaskPlanner:
 
         # Calculate totals
         total_time = sum(t.estimated_minutes for t in tasks)
-        total_complexity = min(5, sum(t.complexity for t in tasks) // max(1, len(tasks)))
+        total_complexity = min(5, sum(t.complexity for t in tasks) // max(1, len(tasks))) if tasks else 0
         high_risk = sum(1 for t in tasks if t.risk and t.risk.level == RiskLevel.HIGH)
 
         return ExecutionPlan(
@@ -89,8 +94,46 @@ class TaskPlanner:
             high_risk_count=high_risk,
         )
 
+    async def refine_plan(self, plan: ExecutionPlan, feedback: str) -> ExecutionPlan:
+        """
+        Refine an existing plan based on execution feedback.
+
+        Args:
+            plan: The current ExecutionPlan
+            feedback: Feedback from a completed or failed task
+
+        Returns:
+            A refined ExecutionPlan
+        """
+        if not self.model_client:
+            logger.warning("No model client available for re-planning, returning original plan.")
+            return plan
+
+        # Call refiner via decomposer (extending its capabilities)
+        refined_tasks = await self._decomposer.refine_via_llm(plan, feedback, self.model_client)
+        
+        # Re-analyze dependencies and risks for the new tasks
+        self._analyzer.analyze_dependencies(refined_tasks)
+        for task in refined_tasks:
+            if task.status == TaskStatus.PENDING:
+                task.risk = self._analyzer.assess_risk(task)
+
+        # Update totals
+        total_time = sum(t.estimated_minutes for t in refined_tasks)
+        total_complexity = min(5, sum(t.complexity for t in refined_tasks) // max(1, len(refined_tasks))) if refined_tasks else 0
+        high_risk = sum(1 for t in refined_tasks if t.risk and t.risk.level == RiskLevel.HIGH)
+
+        return ExecutionPlan(
+            id=self._generate_id("plan_refined"),
+            goal=plan.goal,
+            tasks=refined_tasks,
+            total_estimated_minutes=total_time,
+            total_complexity=total_complexity,
+            high_risk_count=high_risk,
+        )
+
     def _decompose_goal(self, goal: str, context: dict) -> list[Task]:
-        """Decompose a goal into tasks."""
+        """Legacy pattern-based decomposition fallback."""
         tasks = []
         goal_lower = goal.lower()
 

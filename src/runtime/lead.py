@@ -75,7 +75,7 @@ class LeadAgentRuntime:
         max_workers: int = 2,
     ):
         self.session = session
-        self.planner = planner or TaskPlanner()
+        self.planner = planner or TaskPlanner(model_client=session.model_client)
         self.max_workers = max(1, max_workers)
 
     def _trace_event(
@@ -111,6 +111,10 @@ class LeadAgentRuntime:
         if not self.session._agent:
             await self.session.initialize()
 
+        # Update planner's model client if it was not available at init
+        if self.planner.model_client is None and self.session.model_client is not None:
+            self.planner.model_client = self.session.model_client
+
         task_manager = self.session.get_task_manager()
         if task_manager is None:
             raise RuntimeError("Task manager is not available for orchestration")
@@ -139,7 +143,7 @@ class LeadAgentRuntime:
                 root_task_id=root_task.id,
                 data={"goal": goal},
             )
-            plan = self.planner.generate_plan(goal, context=context or {})
+            plan = await self.planner.generate_plan(goal, context=context or {})
             result.plan_id = plan.id
             self._trace_event(
                 "plan_generated",
@@ -151,9 +155,13 @@ class LeadAgentRuntime:
                     "task_count": len(plan.tasks),
                 },
             )
+            
+            from src.runtime.merge_engine import OrchestrationMergeEngine
+            merge_engine = OrchestrationMergeEngine()
+            
             persistent_ids = self._materialize_plan(task_manager, root_task.id, plan)
 
-            pending_planner_ids = {task.id for task in plan.tasks}
+            pending_planner_ids = {task.id for task in plan.tasks if task.status == TaskStatus.PENDING}
             while pending_planner_ids:
                 ready_batch = self._collect_ready_batch(
                     task_manager,
@@ -163,6 +171,15 @@ class LeadAgentRuntime:
                     pending_planner_ids,
                 )
                 if not ready_batch:
+                    # Check if we are truly stalled or just waiting for in-progress tasks
+                    in_progress_planner_ids = {
+                        tid for tid, p_id in persistent_ids.items() 
+                        if tid in pending_planner_ids and task_manager.get_task(p_id).status == TaskStatus.IN_PROGRESS
+                    }
+                    if in_progress_planner_ids:
+                        await asyncio.sleep(1) # Wait for in-progress tasks
+                        continue
+
                     self._trace_event(
                         "stalled",
                         run_id=trace_run_id,
@@ -208,16 +225,57 @@ class LeadAgentRuntime:
                     pending_planner_ids.discard(outcome.planner_task_id)
                     result.executed_task_ids.append(outcome.persistent_task_id)
                     result.task_summaries[outcome.persistent_task_id] = outcome.summary
+                    
+                    # Update internal plan state for dependencies
+                    self.planner.update_task_status(
+                        plan, 
+                        outcome.planner_task_id, 
+                        TaskStatus.COMPLETED if outcome.success else TaskStatus.FAILED
+                    )
 
                     if outcome.success:
                         result.completed_task_ids.append(outcome.persistent_task_id)
+                        merge_engine.add_worker_output(outcome.persistent_task_id, outcome.summary)
                         continue
 
+                    # TASK FAILED: Trigger Dynamic Re-planning
                     result.failed_task_ids.append(outcome.persistent_task_id)
-                    if result.blocked_task_id is None:
-                        result.blocked_task_id = outcome.persistent_task_id
+                    
+                    self._trace_event(
+                        "re_planning_triggered",
+                        run_id=trace_run_id,
+                        root_task_id=root_task.id,
+                        data={"failed_task_id": outcome.persistent_task_id, "error": outcome.error},
+                    )
+                    
+                    try:
+                        feedback = f"Task '{outcome.planner_task_id}' failed with error: {outcome.error or outcome.summary}"
+                        new_plan = await self.planner.refine_plan(plan, feedback)
+                        
+                        # Update task graph with new plan
+                        # For simplicity, we materialize the NEW tasks and mark removed ones as BLOCKED in persistent graph
+                        new_persistent_ids = self._materialize_plan(task_manager, root_task.id, new_plan)
+                        persistent_ids.update(new_persistent_ids)
+                        
+                        plan = new_plan
+                        pending_planner_ids = {task.id for task in plan.tasks if task.status == TaskStatus.PENDING}
+                        
+                        self._trace_event(
+                            "plan_refined",
+                            run_id=trace_run_id,
+                            root_task_id=root_task.id,
+                            data={"new_task_count": len(plan.tasks)},
+                        )
+                        # Break out of the outcome loop to start the new batch with refined plan
+                        break
+                    except Exception as e:
+                        logger.error("Re-planning failed: %s", e)
+                        if result.blocked_task_id is None:
+                            result.blocked_task_id = outcome.persistent_task_id
+                        # If re-planning fails, we fall back to blocking the whole orchestration
 
-                if result.failed_task_ids:
+                if result.failed_task_ids and not pending_planner_ids:
+                    # If we have failures and no way to continue (no re-plan succeeded)
                     self._trace_event(
                         "blocked",
                         run_id=trace_run_id,
@@ -236,6 +294,9 @@ class LeadAgentRuntime:
                     result.summary = self._build_failure_summary(result)
                     return result
 
+            # All tasks done (or skipped)
+            merged = merge_engine.merge_results()
+            
             task_manager.update_task(
                 root_task.id,
                 status=TaskStatus.COMPLETED,
@@ -247,10 +308,7 @@ class LeadAgentRuntime:
                 root_task_id=root_task.id,
                 data={"completed_task_ids": list(result.completed_task_ids)},
             )
-            result.summary = (
-                f"Completed {len(result.completed_task_ids)} planned task(s) "
-                f"with up to {self.max_workers} worker(s)"
-            )
+            result.summary = merged.summary
             return result
         except Exception as exc:
             self._trace_event(
@@ -707,11 +765,14 @@ class LeadAgentRuntime:
     def _build_worker_input(self, planner_task: Any, worker_profile: WorkerProfile) -> str:
         """Wrap a planner task in profile-specific worker instructions."""
         return (
-            f"Execution profile: {worker_profile.role}\n"
+            f"You are operating in the '{worker_profile.role}' execution profile.\n"
             f"Available capability groups: {', '.join(worker_profile.capability_groups)}\n"
-            f"Profile instruction: {worker_profile.instruction}\n"
-            f"Subtask: {planner_task.description}\n"
-            "Work independently within this profile and return a concise subtask result."
+            f"Profile instruction: {worker_profile.instruction}\n\n"
+            f"### YOUR TASK: {planner_task.title}\n"
+            f"Description: {planner_task.description}\n\n"
+            "Please work independently to achieve this subtask. "
+            "Use the tools provided to explore, implement, or verify as needed. "
+            "When done, return a concise summary of your work and results."
         )
 
     def _tool_is_visible(self, tool_name: str) -> bool:
