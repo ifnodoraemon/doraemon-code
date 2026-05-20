@@ -22,16 +22,13 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from src.agent import (
-    AgentSession,
-)
+from src.agent import AgentSession
 from src.core.commands import CommandDefinition, CommandManager, CommandResult
 from src.core.config.config import load_config
-from src.core.home import (
-    set_project_dir,
-)
+from src.core.home import set_project_dir
 from src.core.logger import configure_root_logger
 from src.core.session import SessionManager
+from src.runtime import bootstrap_runtime
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -628,17 +625,29 @@ async def run_chat_loop(
         if await _handle_pre_session_initial_prompt(initial_prompt, project_dir):
             return
 
+    # Use unified runtime bootstrap
+    bootstrap = await bootstrap_runtime(
+        mode=mode,
+        project=project,
+        project_dir=project_dir,
+    )
+
     session = AgentSession(
-        model_client=None,
-        registry=None,
+        model_client=bootstrap.model_client,
+        registry=bootstrap.registry,
         project=project,
         mode=mode,
         max_turns=max_turns,
         project_dir=project_dir,
+        hooks=bootstrap.hooks,
+        checkpoints=bootstrap.checkpoints,
+        skills=bootstrap.skills,
+        task_manager=bootstrap.task_manager,
         enable_trace=enable_trace,
         session_id=resume_session_id,
     )
     await session.initialize()
+
 
     console.print(f"[dim]Session: {session.session_id}[/dim]")
     console.print()

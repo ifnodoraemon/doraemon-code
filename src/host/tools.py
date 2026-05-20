@@ -106,9 +106,9 @@ class ToolDefinition:
     """Definition of a tool."""
 
     name: str
-    description: str
+    description: str | None
     function: Callable
-    parameters: dict[str, Any]
+    parameters: dict[str, Any] | None
     sensitive: bool = False  # Requires HITL approval
     timeout: float = 60.0  # Default timeout in seconds
     source: str = "built_in"
@@ -187,16 +187,19 @@ class ToolRegistry:
             metadata: Additional registry metadata
         """
         tool_name = name or func.__name__
-        tool_desc = description or (func.__doc__ or "").strip()
+        
+        # If it's a lazy tool and we don't have a description, don't trigger the load now.
+        # We'll extract the real description and parameters when needed for the model definition.
+        if description:
+            tool_desc = description
+        elif isinstance(func, LazyToolFunction) and func._loaded_func is None:
+            tool_desc = None # Signal that it needs to be loaded on demand
+        else:
+            tool_desc = (func.__doc__ or "").strip()
 
         # Extract parameters from function signature
         if isinstance(func, LazyToolFunction) and func._loaded_func is None:
-            parameters = {
-                "type": "object",
-                "properties": {},
-                "required": [],
-                "additionalProperties": True,
-            }
+            parameters = None # Signal that it needs to be loaded on demand
         else:
             parameters = self._extract_parameters(func)
 
@@ -368,6 +371,22 @@ class ToolRegistry:
             # 如果指定了工具名称列表，只返回列表中的工具
             if tool_names is not None and tool.name not in tool_names:
                 continue
+
+            # Ensure lazy loaded tools have their metadata
+            if tool.description is None or tool.parameters is None:
+                if isinstance(tool.function, LazyToolFunction):
+                    # Trigger the load
+                    func = tool.function._load()
+                    if tool.description is None:
+                        tool.description = (func.__doc__ or "").strip()
+                    if tool.parameters is None:
+                        tool.parameters = self._extract_parameters(func)
+                else:
+                    # Fallback for non-lazy tools that somehow have missing metadata
+                    if tool.description is None:
+                        tool.description = (tool.function.__doc__ or "").strip()
+                    if tool.parameters is None:
+                        tool.parameters = self._extract_parameters(tool.function)
 
             json_schema = types.JSONSchema.model_validate(tool.parameters or {"type": "object"})
             decl = types.FunctionDeclaration(

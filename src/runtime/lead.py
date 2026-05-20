@@ -221,6 +221,7 @@ class LeadAgentRuntime:
                     ]
                 )
 
+                failed_outcomes = []
                 for outcome in outcomes:
                     pending_planner_ids.discard(outcome.planner_task_id)
                     result.executed_task_ids.append(outcome.persistent_task_id)
@@ -238,22 +239,30 @@ class LeadAgentRuntime:
                         merge_engine.add_worker_output(outcome.persistent_task_id, outcome.summary)
                         continue
 
-                    # TASK FAILED: Trigger Dynamic Re-planning
+                    # TASK FAILED: Collect feedback for re-planning
                     result.failed_task_ids.append(outcome.persistent_task_id)
-                    
+                    failed_outcomes.append(outcome)
+
+                if failed_outcomes:
+                    # Trigger Dynamic Re-planning with ALL failures in this batch
                     self._trace_event(
                         "re_planning_triggered",
                         run_id=trace_run_id,
                         root_task_id=root_task.id,
-                        data={"failed_task_id": outcome.persistent_task_id, "error": outcome.error},
+                        data={
+                            "failed_task_ids": [o.persistent_task_id for o in failed_outcomes],
+                            "errors": [o.error for o in failed_outcomes],
+                        },
                     )
                     
                     try:
-                        feedback = f"Task '{outcome.planner_task_id}' failed with error: {outcome.error or outcome.summary}"
+                        feedback = "\n".join([
+                            f"Task '{o.planner_task_id}' failed with error: {o.error or o.summary}"
+                            for o in failed_outcomes
+                        ])
                         new_plan = await self.planner.refine_plan(plan, feedback)
                         
                         # Update task graph with new plan
-                        # For simplicity, we materialize the NEW tasks and mark removed ones as BLOCKED in persistent graph
                         new_persistent_ids = self._materialize_plan(task_manager, root_task.id, new_plan)
                         persistent_ids.update(new_persistent_ids)
                         
@@ -266,13 +275,11 @@ class LeadAgentRuntime:
                             root_task_id=root_task.id,
                             data={"new_task_count": len(plan.tasks)},
                         )
-                        # Break out of the outcome loop to start the new batch with refined plan
-                        break
                     except Exception as e:
                         logger.error("Re-planning failed: %s", e)
                         if result.blocked_task_id is None:
-                            result.blocked_task_id = outcome.persistent_task_id
-                        # If re-planning fails, we fall back to blocking the whole orchestration
+                            result.blocked_task_id = failed_outcomes[0].persistent_task_id
+                        # If re-planning fails, we fall back to blocking logic below
 
                 if result.failed_task_ids and not pending_planner_ids:
                     # If we have failures and no way to continue (no re-plan succeeded)

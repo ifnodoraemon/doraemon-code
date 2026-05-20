@@ -248,7 +248,7 @@ def run(
 
 
 def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
-    """Execute a shell command."""
+    """Execute a shell command with resource limits and total timeout."""
     import queue
 
     if _is_command_blocked(command):
@@ -269,18 +269,26 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
         return f"Error: Invalid working directory: {e}"
 
     timeout = min(max(1, timeout), 600)
+    limits = DEFAULT_LIMITS
 
     try:
+        subprocess_kwargs: dict = {
+            "shell": False,
+            "cwd": resolved_dir,
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.STDOUT,
+            "text": True,
+            "bufsize": 1,
+            "universal_newlines": True,
+            "start_new_session": platform.system() != "Windows",
+        }
+
+        if platform.system() != "Windows":
+            subprocess_kwargs["preexec_fn"] = _create_sandbox_preexec(limits)
+
         process = subprocess.Popen(
             [DEFAULT_SHELL_CONFIG.shell, "-c", command],
-            shell=False,
-            cwd=resolved_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            universal_newlines=True,
-            start_new_session=platform.system() != "Windows",
+            **subprocess_kwargs
         )
 
         output_queue: queue.Queue = queue.Queue()
@@ -297,18 +305,17 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
         t.start()
 
         output_lines = []
-        last_activity_time = time.time()
+        start_time = time.time()
 
         while True:
             try:
-                line = output_queue.get(timeout=1.0)
+                # Use a small timeout for queue get to allow checking total timeout
+                line = output_queue.get(timeout=0.5)
                 output_lines.append(line)
-                last_activity_time = time.time()
                 while True:
                     try:
                         line = output_queue.get_nowait()
                         output_lines.append(line)
-                        last_activity_time = time.time()
                     except queue.Empty:
                         break
             except queue.Empty:
@@ -325,17 +332,21 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
                         break
                 break
 
-            if time.time() - last_activity_time > timeout:
+            # Enforce total execution timeout
+            if time.time() - start_time > timeout:
                 _terminate_process(process)
                 logger.warning("Command timed out: %s", command)
                 return (
                     truncate_output("".join(output_lines))
-                    + f"\n\nError: Command timed out. No output for {timeout} seconds."
+                    + f"\n\nError: Command timed out after {timeout} seconds total execution time."
                 )
 
         output = truncate_output("".join(output_lines))
         if return_code != 0:
-            output += f"\n\n[Exit code: {return_code}]"
+            if return_code == 137: # SIGKILL, likely OOM or RLIMIT
+                output += f"\n\nError: Command terminated (exit code 137). Resource limits exceeded."
+            else:
+                output += f"\n\n[Exit code: {return_code}]"
 
         if not output.strip():
             return f"Command completed successfully (exit code: {return_code})"
@@ -345,6 +356,7 @@ def _run_shell(command: str, timeout: int, working_dir: str | None) -> str:
     except Exception as e:
         logger.error("Command execution failed: %s", e)
         return f"Error executing command: {str(e)}"
+
 
 
 _SANDBOX_WARNING = (

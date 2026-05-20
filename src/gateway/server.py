@@ -32,27 +32,51 @@ from .schema import ChatMessage, ChatRequest, ErrorResponse, ToolDefinition
 logger = logging.getLogger(__name__)
 
 
-def load_config() -> dict[str, Any]:
-    """Load gateway configuration from environment.
+def load_gateway_config() -> dict[str, Any]:
+    """Load gateway configuration using unified ClientConfig.
 
-    API keys are never stored in the config dict. Instead, the env var
-    name is recorded so the router can read keys at initialization time.
-    This prevents accidental leakage via debug endpoints or error messages.
+    This ensures consistency with the agent's model configuration while
+    providing the structure expected by ModelRouter.
     """
+    from src.core.llm.model_utils import ClientConfig
+
+    try:
+        config = ClientConfig.from_env()
+    except Exception as e:
+        logger.warning("Could not load project config, falling back to environment: %s", e)
+        # Fallback to pure env vars if project config is missing/invalid
+        import os
+        return {
+            "google": {
+                "enabled": bool(os.getenv("GOOGLE_API_KEY")),
+                "api_key_env": "GOOGLE_API_KEY",
+            },
+            "openai": {
+                "enabled": bool(os.getenv("OPENAI_API_KEY")),
+                "api_key_env": "OPENAI_API_KEY",
+                "api_base": os.getenv("OPENAI_API_BASE"),
+            },
+            "anthropic": {
+                "enabled": bool(os.getenv("ANTHROPIC_API_KEY")),
+                "api_key_env": "ANTHROPIC_API_KEY",
+                "api_base": os.getenv("ANTHROPIC_API_BASE"),
+            },
+        }
+
     return {
         "google": {
-            "enabled": bool(os.getenv("GOOGLE_API_KEY")),
+            "enabled": bool(config.google_api_key),
             "api_key_env": "GOOGLE_API_KEY",
         },
         "openai": {
-            "enabled": bool(os.getenv("OPENAI_API_KEY")),
+            "enabled": bool(config.openai_api_key),
             "api_key_env": "OPENAI_API_KEY",
-            "api_base": os.getenv("OPENAI_API_BASE"),
+            "api_base": config.openai_api_base,
         },
         "anthropic": {
-            "enabled": bool(os.getenv("ANTHROPIC_API_KEY")),
+            "enabled": bool(config.anthropic_api_key),
             "api_key_env": "ANTHROPIC_API_KEY",
-            "api_base": os.getenv("ANTHROPIC_API_BASE"),
+            "api_base": config.anthropic_api_base,
         },
     }
 
@@ -60,7 +84,7 @@ def load_config() -> dict[str, Any]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize router on startup, clean up on shutdown."""
-    config = load_config()
+    config = load_gateway_config()
     app.state.router = ModelRouter(config)
     await app.state.router.initialize()
     logger.info("Model Gateway started")
