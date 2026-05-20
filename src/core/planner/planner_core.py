@@ -60,15 +60,14 @@ class TaskPlanner:
         """
         context = context or {}
 
+        if not self.model_client:
+            raise RuntimeError("TaskPlanner requires a model_client for decomposition. Fallback disabled for debugging.")
+
         # Analyze goal complexity (legacy, can be refined later)
         self._analyzer.estimate_complexity(goal)
 
-        # Decompose into tasks
-        if self.model_client:
-            tasks = await self._decomposer.decompose_via_llm(goal, context, self.model_client)
-        else:
-            # Fallback to pattern-based decomposition if no model client is available
-            tasks = self._decompose_goal(goal, context)
+        # Decompose into tasks via LLM (strict)
+        tasks = await self._decomposer.decompose_via_llm(goal, context, self.model_client)
 
         # Analyze dependencies (ensure consistency)
         self._analyzer.analyze_dependencies(tasks)
@@ -131,27 +130,6 @@ class TaskPlanner:
             total_complexity=total_complexity,
             high_risk_count=high_risk,
         )
-
-    def _decompose_goal(self, goal: str, context: dict) -> list[Task]:
-        """Legacy pattern-based decomposition fallback."""
-        tasks = []
-        goal_lower = goal.lower()
-
-        # Pattern-based decomposition
-        if "implement" in goal_lower or "create" in goal_lower or "add" in goal_lower:
-            tasks.extend(self._decomposer.create_implementation_tasks(goal, context))
-        elif "fix" in goal_lower or "bug" in goal_lower or "debug" in goal_lower:
-            tasks.extend(self._decomposer.create_bugfix_tasks(goal, context))
-        elif "refactor" in goal_lower or "improve" in goal_lower:
-            tasks.extend(self._decomposer.create_refactor_tasks(goal, context))
-        elif "test" in goal_lower:
-            tasks.extend(self._decomposer.create_testing_tasks(goal, context))
-        else:
-            complexity = self._analyzer.estimate_complexity(goal)
-            time = self._analyzer.estimate_time(complexity)
-            tasks.append(self._decomposer.create_generic_task(goal, context, complexity, time))
-
-        return tasks
 
     def update_task_status(self, plan: ExecutionPlan, task_id: str, status: TaskStatus) -> bool:
         """

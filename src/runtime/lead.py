@@ -673,93 +673,36 @@ class LeadAgentRuntime:
 
     def _select_worker_profile(self, planner_task: Any) -> WorkerProfile:
         """Choose an execution profile and tool scope for a planner task."""
+        from src.core.config.profiles import WORKER_PROFILES
+        
         text = f"{planner_task.title} {planner_task.description}".lower()
         available = set(getattr(self.session.registry, "get_tool_names", lambda: [])())
 
-        profile_tools = {
-            "inspect": [
-                "read",
-                "search",
-                "web_search",
-                "web_fetch",
-                "lsp_hover",
-                "lsp_definition",
-                "lsp_references",
-                "memory_get",
-                "memory_search",
-                "memory_list",
-                "task",
-            ],
-            "validate": [
-                "read",
-                "search",
-                "run",
-                "lsp_diagnostics",
-                "lsp_hover",
-                "lsp_definition",
-                "memory_get",
-                "memory_search",
-                "memory_list",
-                "task",
-            ],
-            "change": [
-                "read",
-                "search",
-                "write",
-                "multi_edit",
-                "notebook_edit",
-                "run",
-                "lsp_diagnostics",
-                "lsp_completions",
-                "lsp_hover",
-                "lsp_definition",
-                "lsp_references",
-                "lsp_rename",
-                "memory_get",
-                "memory_put",
-                "memory_search",
-                "memory_list",
-                "task",
-            ],
-        }
-        profile_capability_groups = {
-            "inspect": ["read", "memory", "research", "task"],
-            "validate": ["read", "edit", "memory", "task"],
-            "change": ["read", "edit", "memory", "research", "task"],
-        }
-        profile_instructions = {
-            "inspect": "Inspect the codebase, gather concrete facts, and avoid speculative edits.",
-            "validate": "Validate behavior, run checks when useful, and return concrete evidence.",
-            "change": "Make the necessary code changes, then verify the subtask before returning.",
-        }
-
-        if any(keyword in text for keyword in ("verify", "validation", "test", "check", "diagnostic", "integration")):
-            profile = "validate"
-        elif any(keyword in text for keyword in ("analyze", "inspect", "research", "explore", "read", "investigate", "design")):
-            profile = "inspect"
-        else:
-            profile = "change"
-
-        allowed_tool_names = [
-            name
-            for name in profile_tools[profile]
-            if name in available and self._tool_is_visible(name)
-        ]
+        # Select profile based on keywords
+        selected = "change"
+        for name, config in WORKER_PROFILES.items():
+            if any(kw in text for kw in config.get("keywords", ())):
+                selected = name
+                break
+        
+        config = WORKER_PROFILES[selected]
+        allowed_tool_names = [n for n in config["tools"] if n in available and self._tool_is_visible(n)]
+        
+        # Fallback for dynamic groups if tools list is empty or insufficient
         if "task" not in allowed_tool_names and "task" in available:
             allowed_tool_names.append("task")
+            
         if not allowed_tool_names:
             allowed_tool_names = [
-                name
-                for name in available
-                if self._tool_is_visible(name)
-                and get_capability_group_for_tool(name) in profile_capability_groups[profile]
+                n for n in available 
+                if self._tool_is_visible(n) and get_capability_group_for_tool(n) in config["groups"]
             ]
 
         return WorkerProfile(
-            role=profile,
-            capability_groups=profile_capability_groups[profile],
+            role=selected,
+            capability_groups=config["groups"],
             allowed_tool_names=allowed_tool_names,
-            instruction=profile_instructions[profile],
+            instruction=config["instruction"],
         )
 
     def _build_worker_input(self, planner_task: Any, worker_profile: WorkerProfile) -> str:

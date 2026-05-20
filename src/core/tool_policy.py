@@ -34,18 +34,6 @@ class ToolPolicy:
 class ToolPolicyEngine:
     """Resolve visibility and execution policy for a tool in a runtime context."""
 
-    WRITE_LIKE_TOOLS = {
-        "write",
-        "multi_edit",
-        "notebook_edit",
-        "lsp_rename",
-        "memory_put",
-        "memory_delete",
-        "db_write_query",
-        "run",
-    }
-    INTERACTIVE_TOOLS = {"ask_user"}
-
     def describe_tool(
         self,
         tool_name: str,
@@ -150,7 +138,8 @@ class ToolPolicyEngine:
             return "extension"
         if tool_name == "run":
             return "workspace_exec"
-        if capability_group == "edit" or tool_name in self.WRITE_LIKE_TOOLS:
+        from src.core.config.tool_specs import WRITE_LIKE_TOOLS
+        if capability_group == "edit" or tool_name in WRITE_LIKE_TOOLS:
             return "workspace_write"
         if capability_group == "research":
             return "network_read"
@@ -164,7 +153,8 @@ class ToolPolicyEngine:
     ) -> str:
         if source in {"mcp_remote", "mcp_extension"}:
             return "full"
-        if requires_approval or tool_name in self.WRITE_LIKE_TOOLS:
+        from src.core.config.tool_specs import WRITE_LIKE_TOOLS
+        if requires_approval or tool_name in WRITE_LIKE_TOOLS:
             return "full"
         return "basic"
 
@@ -173,7 +163,8 @@ class ToolPolicyEngine:
         tool_name: str,
         requires_approval: bool,
     ) -> bool:
-        if tool_name in self.INTERACTIVE_TOOLS:
+        from src.core.config.tool_specs import INTERACTIVE_TOOLS
+        if tool_name in INTERACTIVE_TOOLS:
             return False
         return not requires_approval
 
